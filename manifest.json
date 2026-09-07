@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "NewTab",
+  "version": "1.0.0",
+  "description": "検索、時間割、天気を自分らしく並べる、オリジナルのホーム画面。",
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "host_permissions": [
+    "https://suggestqueries.google.com/*",
+    "https://johou7-275be-default-rtdb.firebaseio.com/*",
+    "https://api.open-meteo.com/*",
+    "https://geocoding-api.open-meteo.com/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'"
+  },
+  "permissions": [
+    "geolocation"
+  ]
+}

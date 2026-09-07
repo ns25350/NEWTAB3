@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#294c83">
+  <meta name="description" content="検索、時間割、天気を自分らしく並べる、新しいタブ。">
+  <title>NewTab</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="features.css">
+  <script src="core.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div id="wallpaper" aria-hidden="true"></div><div id="shade" aria-hidden="true"></div>
+  <a class="skip-link" href="#search-input">検索へ移動</a>
+  <header class="status-bar">
+    <time id="status-date"></time>
+    <div class="header-actions"><button id="undo" class="pill" hidden>元に戻す</button><button id="edit" class="pill" aria-pressed="false">編集</button><button id="settings" class="round" aria-label="設定を開く"></button></div>
+  </header>
+  <main id="home" aria-label="ホーム画面"><div id="viewport"><div id="pages"></div></div></main>
+  <footer class="home-footer"><div id="page-nav" aria-label="ホームのページ"></div><nav id="dock" aria-label="Dock"></nav></footer>
+  <div id="edit-guide" hidden>グリップで移動 · 右下でサイズ変更 · 端まで運ぶと別のページへ</div>
+  <dialog id="sheet" aria-labelledby="sheet-title"><div class="sheet-head"><button id="sheet-back" class="plain" hidden>戻る</button><h1 id="sheet-title">設定</h1><button class="round close-dialog" aria-label="閉じる">×</button></div><div id="sheet-body"></div></dialog>
+  <dialog id="folder-sheet" aria-labelledby="folder-title"><div class="folder-head"><h2 id="folder-title"></h2><button class="round close-dialog" aria-label="フォルダを閉じる">×</button></div><div id="folder-items"></div><div id="folder-actions"></div></dialog>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+  <input id="wallpaper-file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+  <input id="import-file" type="file" accept="application/json,.json" hidden>
+  <noscript>NewTabを使うにはJavaScriptを有効にしてください。</noscript>
+</body>
+</html>
