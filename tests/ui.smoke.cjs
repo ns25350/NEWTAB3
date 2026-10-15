@@ -53,10 +53,12 @@ async function noOverflow(page) {
       wide: document.documentElement.scrollWidth > innerWidth,
       outside: boxes.filter(({ r }) => r.left < -1 || r.right > innerWidth + 1).map(x => x.key),
       overlap: boxes.some((a, i) => boxes.slice(i + 1).some(b => a.r.left < b.r.right - 1 && a.r.right > b.r.left + 1 && a.r.top < b.r.bottom - 1 && a.r.bottom > b.r.top + 1)),
-      footerCollision: main.bottom > document.querySelector('.home-footer').getBoundingClientRect().top + 1,
+      fullViewport: main.top === 0 && main.left === 0 && Math.abs(main.bottom - innerHeight) <= 1 && Math.abs(main.width - innerWidth) <= 1,
+      floatingControls: getComputedStyle(document.querySelector('.home-footer')).position === 'fixed',
+      fullGridWidth: active.querySelector('.grid').getBoundingClientRect().width >= innerWidth - 48 - 1,
     };
   });
-  assert.deepEqual(result, { wide: false, outside: [], overlap: false, footerCollision: false });
+  assert.deepEqual(result, { wide: false, outside: [], overlap: false, fullViewport: true, floatingControls: true, fullGridWidth: true });
 }
 (async () => {
   const browser = await chromium.launch({ executablePath, headless: true, args: ['--no-sandbox'] });
@@ -288,6 +290,31 @@ async function noOverflow(page) {
     }
     pass('Cupertino Pane: keyboard detents, focus containment, mouse/touch swipe dismissal and reopening');
 
+    for (const width of [390, 1440]) {
+      const canvas = await open(browser, { viewport: { width, height: 844 } });
+      await canvas.page.evaluate(() => {
+        const state = NewTabCore.defaults();
+        const bottom = state.pages[0].items.find(item => item.id === 's:github');
+        bottom.x = 5; bottom.y = 16;
+        localStorage.setItem(NewTabCore.KEY, JSON.stringify(state));
+      });
+      await canvas.page.reload({ waitUntil: 'domcontentloaded' });
+      await noOverflow(canvas.page);
+      const bottom = canvas.page.locator('[data-key="s:github"] a');
+      await bottom.evaluate(n => n.scrollIntoView({ block: 'end' }));
+      const reachable = await bottom.evaluate(n => {
+        const box = n.getBoundingClientRect(), footer = document.querySelector('.home-footer').getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return box.bottom < footer.top && n.contains(hit);
+      });
+      assert.equal(reachable, true, 'Bottom grid items must scroll above the floating Dock');
+      await canvas.page.locator('#settings').click();
+      await canvas.page.locator('#sheet[data-pane-ready=true]').waitFor();
+      assert.deepEqual(canvas.errors, []);
+      await canvas.context.close();
+    }
+    pass('Full-screen canvas uses the full width and height; bottom items scroll above the floating Dock');
+
     const offlineContext = await browser.newContext();
     const offlinePage = await offlineContext.newPage();
     await offlinePage.goto(baseURL, { waitUntil: 'domcontentloaded' });
@@ -299,10 +326,10 @@ async function noOverflow(page) {
       if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
     });
     const cachedFiles = await offlinePage.evaluate(async () => {
-      const cache = await caches.open('newtab-original-shell-glass-4');
+      const cache = await caches.open('newtab-original-shell-canvas-5');
       return (await cache.keys()).map(r => r.url);
     });
-    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261016-glass-4')));
+    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261016-canvas-5')));
     assert.equal(await offlinePage.evaluate(async () => (await caches.keys()).includes('newtab-original-shell-2')), false);
     await offlineContext.setOffline(true);
     await offlinePage.reload({ waitUntil: 'domcontentloaded' });

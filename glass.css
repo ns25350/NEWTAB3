@@ -1,6 +1,7 @@
 /* A header-free home, standard translucent content, and floating glass controls. */
-#home { padding-top: clamp(28px,8vh,100px); }
-#home .page { padding-top: 0; }
+#home { --home-top: max(16px,env(safe-area-inset-top)); padding-top: var(--home-top); scroll-padding-bottom: var(--dock-clearance); }
+#home .page { padding: 0 max(24px,env(safe-area-inset-right)) var(--dock-clearance) max(24px,env(safe-area-inset-left)); }
+#home .grid { min-height: calc(100dvh - var(--home-top)); }
 #home .editing .page, .editing #home .page { padding-top: 30px; }
 .dock-surface { display: flex; align-items: center; gap: 12px; padding: 13px 15px; border-radius: 30px; border: 1px solid var(--card-border); background: var(--control-fill); box-shadow: 0 12px 40px #0a23442b, inset 0 1px 1px #ffffff80; backdrop-filter: blur(var(--blur)) saturate(1.4); -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4); pointer-events: auto; --label: var(--home-ink,var(--ink)); }
 #dock { border: 0; background: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; padding: 0; gap: 12px; }
@@ -57,7 +58,7 @@
 :root[data-material=glass][data-appearance=dark] #sheet .widget-settings-list,
 :root[data-material=glass][data-appearance=dark] #sheet .settings-link { border-color: #ffffff16; }
 @media (max-width:760px) {
-  #home { padding-top: max(24px,env(safe-area-inset-top)); }
+  #home .page { padding-inline: max(16px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-right)); }
   .dock-surface { padding: 10px; gap: 4px; border-radius: 26px; }
   #dock { gap: 4px; }
   .dock-tools { padding-left: 4px; gap: 4px; }

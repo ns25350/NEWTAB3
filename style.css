@@ -17,6 +17,7 @@
   --gap: 20px;
   --label: #263d38;
   --icon-size: 60px;
+  --dock-clearance: 176px;
   --separator: #2543381a;
   --control-fill: #ffffffb8;
   --card-border: #ffffffa3;
@@ -58,11 +59,11 @@ small, .subtle { font-size: .8125rem; color: var(--muted); }
 .pill svg, .round svg { width: 19px; height: 19px; }
 .skip-link { position: fixed; left: 24px; top: -100px; z-index: 100; background: rgb(var(--surface)); color: var(--ink); padding: 14px 22px; border-radius: 15px; }
 .skip-link:focus { top: 16px; }
-#home { position: relative; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #82998e55 transparent; scroll-padding: 24px; }
+#home { position: fixed; inset: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #82998e55 transparent; scroll-padding: 24px; }
 #viewport { overflow: hidden; min-height: 0; touch-action: pan-y; }
 #pages { display: flex; align-items: flex-start; will-change: transform; transition: transform calc(var(--duration) * var(--motion)) cubic-bezier(.2,.75,.25,1); }
 #pages.following { transition: none; }
-.page { flex: 0 0 100%; padding: 12px max(32px, calc((100vw - 1080px)/2)) 38px; }
+.page { flex: 0 0 100%; padding: 12px 24px 38px; }
 .grid { position: relative; display: grid; grid-template-columns: repeat(var(--cols), minmax(0,1fr)); grid-auto-rows: var(--row); gap: var(--gap); min-height: 440px; }
 .item { position: relative; min-width: 0; isolation: isolate; container-type: size; container-name: tile; outline: none; }
 .widget { color: var(--ink); }
@@ -96,7 +97,7 @@ small, .subtle { font-size: .8125rem; color: var(--muted); }
 .folder-icon { background: #d4e4db; display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; padding: 8px; }
 .folder-icon .mini { height: 100%; aspect-ratio: 1; border-radius: 4px; background: var(--app-color); font-size: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .folder-icon .mini img { position: static; width: 75%; height: 75%; }
-.home-footer { position: relative; flex-shrink: 0; padding: 8px 0 max(20px, env(safe-area-inset-bottom)); z-index: 12; display: flex; align-items: center; flex-direction: column; gap: 10px; pointer-events: none; }
+.home-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 8px 0 max(20px, env(safe-area-inset-bottom)); z-index: 12; display: flex; align-items: center; flex-direction: column; gap: 10px; pointer-events: none; }
 #page-nav, #dock { pointer-events: auto; }
 #page-nav { display: flex; align-items: center; justify-content: center; padding: 0 5px; border-radius: 20px; background: var(--control-fill); color: var(--label); }
 .page-dot { width: 36px; height: 36px; display: grid; place-items: center; }
