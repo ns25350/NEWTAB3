@@ -37,7 +37,7 @@ Manifest V3です。リモートのJavaScriptは使用していません。現�
 | `app.js` | 画面描画・操作・時間割と天気の取得 |
 | `manifest.json` | Chrome拡張機能の定義 |
 | `sw.js` | 公開ページ用のオフラインキャッシュ |
-| `assets/wallpaper.png` | オリジナルの壁紙 |
+| `assets/landscape.svg` / `assets/landscape-dark.svg` | 明暗に対応するオリジナルの風景壁紙 |
 | `icon.svg` | オリジナルのアプリアイコン |
 | `DESIGN.md` | 調査した画面と設計上の判断 |
 | `tests/core.test.cjs` | 配置・移行・日時・検索の検証 |
@@ -83,7 +83,7 @@ JavaScriptの構文、ローカルファイルの参照、Manifest、15項目の
 node tests/core.test.cjs
 ```
 
-実ブラウザでの描画、タッチ端末での操作、拡張機能の実インストール、外部APIの実接続は、この制作時には検証していません。
+Chromiumでの描画・設定・検索候補・配置変更・保存・ダークモード・文字サイズ200%はブラウザ回帰検証で確認しています。タッチ端末の実機操作、拡張機能の実インストール、外部APIの実接続は未検証です。
 
 GitHub PagesではGoogle SuggestがCORSによって使えない場合があります。その場合も登録サイト・保存を許可した履歴の候補と通常の検索は利用できます。外部サービス側の停止や仕様変更により、取得機能が使えなくなることがあります。
 
@@ -92,3 +92,30 @@ GitHub PagesではGoogle SuggestがCORSによって使えない場合があり�
 仕様書の参照リポジトリのコード・CSS・壁紙を流用せず、新規作成しました。Appleのロゴ・純正アプリアイコン・壁紙は同梱していません。表示するファビコンは各サイトの識別用です。Apple製品・公式テーマではありません。
 
 ソースコードはMIT Licenseです。天気データは [Open-Meteo](https://open-meteo.com/) の提供条件に従います。
+
+## Landscape edition とデザインスキル
+
+ホームを穏やかな風景、検索を優先した配置、読みやすい情報カードへ更新しました。外観の自動調整は端末のライト／ダーク設定に追従します。写真を選択した場合は写真に基づく配色を使います。保存済みの配置・サイト・写真は引き継ぎ、新しい初期配置を強制しません。
+
+[apple-design](.design-rules/SKILL.md) は `.design-rules` の Git submodule として導入しています。Codex は [AGENTS.md](AGENTS.md) の指示から利用します。新規クローン時は次を実行してください。
+
+```sh
+git submodule update --init .design-rules
+```
+
+ローカルでの確認：
+
+```sh
+python3 -m http.server 8000 --bind 127.0.0.1
+```
+
+別ターミナルでロジックとブラウザ回帰検証を実行できます。
+
+```sh
+node tests/core.test.cjs
+node tests/ui.smoke.cjs
+```
+
+ブラウザ検証には Node.js から解決できる `playwright` と Chromium が必要です。このクラウド環境には両方あります。別の環境では `CHROMIUM_PATH` に実行ファイル、必要なら `NEWTAB_TEST_URL` に起動済みのサーバーを指定できます。これらは検証用ツールであり、アプリを使うための npm 依存関係ではありません。成功・失敗の API 応答はテスト内で再現するため、外部サービスの実接続は検証しません。
+
+デザイン上の判断、色のコントラスト、検証範囲は [DESIGN.md](DESIGN.md) に記載しています。
