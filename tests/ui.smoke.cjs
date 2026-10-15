@@ -80,8 +80,10 @@ async function noOverflow(page) {
     assert.equal(await page.locator('#sheet[open] .day-forecast').count(), 5);
     await page.keyboard.press('Escape');
     await page.keyboard.press('Control+,');
-    assert.equal(await page.locator('#sheet[open] #sheet-title').textContent(), '設定');
-    await page.locator('.settings-menu button').filter({ hasText: '壁紙と外観' }).click();
+    assert.equal(await page.locator('#sheet[open] #sheet-title').textContent(), '壁紙と外観');
+    await page.locator('#settings-nav button[data-section=clock]').click();
+    assert.equal(await page.getByRole('radio', { name: 'デジタル', exact: true }).getAttribute('aria-checked'), 'true');
+    await page.locator('#settings-nav button[data-section=appearance]').click();
     assert.equal(await page.locator('#sheet-title').textContent(), '壁紙と外観');
     await page.keyboard.press('Escape');
     pass('Dialogs: five-day forecast, settings shortcut, nested settings and dismissal');
@@ -158,6 +160,95 @@ async function noOverflow(page) {
       await large.context.close();
     }
     pass('200% text at 320 and 1440px: cards grow without clipping and settings remain reachable');
+
+    const settings = await open(browser);
+    const sp = settings.page;
+    await sp.locator('#settings').click();
+    await sp.locator('#settings-filter').fill('授業');
+    assert.equal(await sp.locator('#settings-nav button').count(), 1);
+    await sp.locator('#settings-nav button').click();
+    assert.equal(await sp.locator('#sheet-title').textContent(), '時間割');
+    await sp.locator('#settings-filter').fill('');
+    await sp.locator('#settings-nav button[data-section=clock]').click();
+    await sp.getByRole('radio', { name: 'アナログ', exact: true }).click();
+    assert.equal(await sp.locator('.analog-face').count(), 1);
+    await sp.getByRole('radio', { name: 'アナログ', exact: true }).press('ArrowLeft');
+    assert.equal(await sp.getByRole('radio', { name: 'デジタル', exact: true }).getAttribute('aria-checked'), 'true');
+    await sp.locator('#settings-nav button[data-section=widgets]').click();
+    await sp.getByRole('switch', { name: '時計を表示', exact: true }).uncheck();
+    assert.equal(await sp.locator('[data-key=clock]').count(), 0);
+    await sp.reload({ waitUntil: 'domcontentloaded' });
+    await sp.locator('#settings').click();
+    await sp.locator('#settings-nav button[data-section=widgets]').click();
+    assert.equal(await sp.getByRole('switch', { name: '時計を表示', exact: true }).isChecked(), false);
+    await sp.getByRole('switch', { name: '時計を表示', exact: true }).check();
+    assert.equal(await sp.locator('[data-key=clock]').count(), 1);
+    await sp.locator('#settings-nav button[data-section=appearance]').click();
+    await sp.getByRole('radio', { name: 'ローズ', exact: true }).click();
+    assert.equal(await sp.getByRole('radio', { name: 'ローズ', exact: true }).getAttribute('aria-checked'), 'true');
+    assert.equal(await sp.getByRole('switch', { name: '外観を自動調整' }).isChecked(), false);
+    await sp.getByRole('switch', { name: '外観を自動調整' }).check();
+    await sp.locator('#settings-nav button[data-section=grid]').click();
+    await sp.getByRole('button', { name: 'シンプル', exact: true }).click();
+    assert.equal(await sp.locator('#sheet.confirmation-mode').count(), 1);
+    await sp.getByRole('button', { name: 'キャンセル', exact: true }).click();
+    assert.equal(await sp.locator('#sheet-title').textContent(), 'グリッドと配置');
+    assert.equal(await sp.locator('#settings-sidebar').isVisible(), true);
+    assert.deepEqual(settings.errors, []);
+    await settings.context.close();
+    pass('Settings: search, navigation, keyboard segments, persistent switches, appearance choices and confirmation return');
+
+    for (const width of [320, 1440]) {
+      const panes = await open(browser, { viewport: { width, height: 844 }, colorScheme: 'dark' });
+      for (const key of ['appearance','grid','pages','shortcuts','widgets','clock','timetable','weather','search','gallery','data']) {
+        await panes.page.locator('#settings').click();
+        if (width < 700) await panes.page.locator('.settings-menu button[data-section=' + key + ']').click();
+        else await panes.page.locator('#settings-nav button[data-section=' + key + ']').click();
+        assert.equal(await panes.page.locator('#sheet-body').evaluate(n => n.scrollWidth <= n.clientWidth + 1), true, key + ' must fit at ' + width);
+        await panes.page.keyboard.press('Escape');
+      }
+      assert.deepEqual(panes.errors, []);
+      await panes.context.close();
+    }
+    pass('All eleven settings panes render without horizontal overflow at 320 and 1440px');
+
+    const mobileSettings = await open(browser, { viewport: { width: 390, height: 844 } });
+    await mobileSettings.page.locator('#settings').click();
+    assert.equal(await mobileSettings.page.locator('.settings-index').count(), 1);
+    await mobileSettings.page.getByRole('button', { name: '壁紙と外観', exact: true }).click();
+    assert.equal(await mobileSettings.page.locator('#sheet-title').textContent(), '壁紙と外観');
+    await mobileSettings.page.locator('#sheet-back').click();
+    await mobileSettings.page.getByRole('searchbox', { name: '設定リストを検索' }).fill('授業');
+    assert.equal(await mobileSettings.page.locator('.settings-menu button:visible').count(), 1);
+    await mobileSettings.page.locator('.settings-menu button:visible').click();
+    assert.equal(await mobileSettings.page.locator('#sheet-title').textContent(), '時間割');
+    assert.deepEqual(mobileSettings.errors, []);
+    await mobileSettings.context.close();
+    pass('Compact settings: grouped list, search, detail navigation and Back');
+
+    const offlineContext = await browser.newContext();
+    const offlinePage = await offlineContext.newPage();
+    await offlinePage.goto(baseURL, { waitUntil: 'domcontentloaded' });
+    await offlinePage.evaluate(async () => {
+      const old = await caches.open('newtab-original-shell-2');
+      await old.put('./style.css', new Response('body { display: none; }', { headers: { 'Content-Type': 'text/css' } }));
+      await navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' });
+      await navigator.serviceWorker.ready;
+      if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
+    });
+    const cachedFiles = await offlinePage.evaluate(async () => {
+      const cache = await caches.open('newtab-original-shell-settings-3');
+      return (await cache.keys()).map(r => r.url);
+    });
+    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261016-settings-3')));
+    assert.equal(await offlinePage.evaluate(async () => (await caches.keys()).includes('newtab-original-shell-2')), false);
+    await offlineContext.setOffline(true);
+    await offlinePage.reload({ waitUntil: 'domcontentloaded' });
+    await offlinePage.locator('#settings').click();
+    assert.equal(await offlinePage.locator('#settings-sidebar').isVisible(), true);
+    assert.equal(await offlinePage.locator('#sheet').evaluate(n => getComputedStyle(n).width), '980px');
+    await offlineContext.close();
+    pass('Old shell cache is removed; versioned settings assets work after an offline reload');
 
     const failure = await open(browser, {}, true);
     await failure.page.getByText('天気を取得できませんでした', { exact: true }).waitFor();
