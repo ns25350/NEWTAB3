@@ -41,6 +41,7 @@ async function open(browser, options = {}, fail = false) {
   });
   await page.goto(baseURL, { waitUntil: 'domcontentloaded' });
   await page.locator('#search-input').waitFor();
+  assert.equal(await page.locator('.status-bar, .welcome, #greeting').count(), 0);
   return { context, page, errors };
 }
 async function noOverflow(page) {
@@ -122,7 +123,7 @@ async function noOverflow(page) {
     assert.equal(await page.locator('html').getAttribute('data-appearance'), 'light');
     await page.emulateMedia({ reducedMotion: 'reduce', contrast: 'more' });
     assert.equal(await page.locator('#pages').evaluate(n => getComputedStyle(n).transitionDuration), '0s');
-    assert.equal(await page.locator('#dock').evaluate(n => getComputedStyle(n).backdropFilter), 'none');
+    assert.equal(await page.locator('.dock-surface').evaluate(n => getComputedStyle(n).backdropFilter), 'none');
     pass('System appearance updates live; reduced motion and increased contrast remove effects');
     assert.deepEqual(errors, []);
     await context.close();
@@ -226,6 +227,67 @@ async function noOverflow(page) {
     await mobileSettings.context.close();
     pass('Compact settings: grouped list, search, detail navigation and Back');
 
+    const material = await open(browser);
+    await material.page.locator('#settings').click();
+    await material.page.locator('#sheet[data-pane-ready=true]').waitFor();
+    await material.page.getByRole('radio', { name: '不透明', exact: true }).click();
+    assert.equal(await material.page.locator('html').getAttribute('data-material'), 'solid');
+    assert.equal(await material.page.locator('.dock-surface').evaluate(n => getComputedStyle(n).backdropFilter), 'none');
+    await material.page.reload({ waitUntil: 'domcontentloaded' });
+    assert.equal(await material.page.locator('html').getAttribute('data-material'), 'solid');
+    await material.page.locator('#settings').click();
+    await material.page.getByRole('radio', { name: 'Liquid Glass', exact: true }).click();
+    assert.equal(await material.page.locator('html').getAttribute('data-material'), 'glass');
+    assert.notEqual(await material.page.locator('.widget').first().evaluate(n => getComputedStyle(n, '::before').backdropFilter), 'none');
+    const media = await material.context.newCDPSession(material.page);
+    await media.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-transparency', value: 'reduce' }] });
+    assert.equal(await material.page.locator('.widget').first().evaluate(n => getComputedStyle(n, '::before').backdropFilter), 'none');
+    assert.deepEqual(material.errors, []);
+    await material.context.close();
+    pass('Glass and solid material choices persist; reduced transparency removes the glass effects');
+
+    for (const touch of [false, true]) {
+      const drawer = await open(browser, { viewport: { width: 390, height: 844 }, hasTouch: touch });
+      const dp = drawer.page;
+      await dp.locator('#settings').click();
+      await dp.locator('#sheet[data-pane-ready=true]').waitFor();
+      const top = await dp.locator('.newtab-pane .pane').evaluate(n => n.getBoundingClientRect().top);
+      await dp.locator('#sheet-grabber').press('ArrowDown');
+      await dp.waitForFunction(y => document.querySelector('.newtab-pane .pane').getBoundingClientRect().top > y + 100, top);
+      await dp.locator('#sheet-grabber').press('ArrowUp');
+      await dp.waitForFunction(y => Math.abs(document.querySelector('.newtab-pane .pane').getBoundingClientRect().top - y) < 2, top);
+      for (let i = 0; i < 8; i++) {
+        await dp.keyboard.press('Tab');
+        assert.equal(await dp.locator('#sheet').evaluate(n => n.contains(document.activeElement)), true);
+      }
+      const grip = await dp.locator('#sheet-grabber').boundingBox();
+      const x = grip.x + grip.width / 2, y = grip.y + grip.height / 2;
+      if (touch) {
+        const cdp = await drawer.context.newCDPSession(dp);
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+        for (let i = 1; i <= 24; i++) {
+          await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + (830 - y) * i / 24 }] });
+          await dp.waitForTimeout(18);
+        }
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      } else {
+        await dp.mouse.move(x, y);
+        await dp.mouse.down();
+        await dp.mouse.move(x, 830, { steps: 30 });
+        await dp.mouse.up();
+      }
+      await dp.locator('#sheet').waitFor({ state: 'hidden' });
+      assert.equal(await dp.locator('.newtab-pane').count(), 0);
+      await dp.locator('#settings').click();
+      await dp.locator('#sheet[data-pane-ready=true]').waitFor();
+      await dp.keyboard.press('Escape');
+      await dp.locator('#sheet').waitFor({ state: 'hidden' });
+      assert.equal(await dp.locator('#settings').evaluate(n => n === document.activeElement), true);
+      assert.deepEqual(drawer.errors, []);
+      await drawer.context.close();
+    }
+    pass('Cupertino Pane: keyboard detents, focus containment, mouse/touch swipe dismissal and reopening');
+
     const offlineContext = await browser.newContext();
     const offlinePage = await offlineContext.newPage();
     await offlinePage.goto(baseURL, { waitUntil: 'domcontentloaded' });
@@ -237,16 +299,17 @@ async function noOverflow(page) {
       if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
     });
     const cachedFiles = await offlinePage.evaluate(async () => {
-      const cache = await caches.open('newtab-original-shell-settings-3');
+      const cache = await caches.open('newtab-original-shell-glass-4');
       return (await cache.keys()).map(r => r.url);
     });
-    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261016-settings-3')));
+    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261016-glass-4')));
     assert.equal(await offlinePage.evaluate(async () => (await caches.keys()).includes('newtab-original-shell-2')), false);
     await offlineContext.setOffline(true);
     await offlinePage.reload({ waitUntil: 'domcontentloaded' });
     await offlinePage.locator('#settings').click();
+    await offlinePage.locator('#sheet[data-pane-ready=true]').waitFor();
     assert.equal(await offlinePage.locator('#settings-sidebar').isVisible(), true);
-    assert.equal(await offlinePage.locator('#sheet').evaluate(n => getComputedStyle(n).width), '980px');
+    assert.equal(await offlinePage.locator('#sheet .pane').evaluate(n => getComputedStyle(n).width), '980px');
     await offlineContext.close();
     pass('Old shell cache is removed; versioned settings assets work after an offline reload');
 

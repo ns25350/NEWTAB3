@@ -139,7 +139,7 @@ dialog::backdrop { background: #142c3547; backdrop-filter: blur(10px); -webkit-b
 }
 @media (prefers-contrast:more) {
   .settings-card, .settings-menu, .setting-row + .setting-row { border-color: var(--muted); }
-  .settings-menu button small, .welcome-note { color: var(--ink); }
+  .settings-menu button small { color: var(--ink); }
   .widget-meta { color: var(--ink); }
 }
 @media (prefers-reduced-transparency:reduce), (prefers-contrast:more) {
@@ -150,7 +150,6 @@ dialog::backdrop { background: #142c3547; backdrop-filter: blur(10px); -webkit-b
 /* Text-size expansion grows the grid rows with the reader's font preference. */
 .widget[data-key=weather] .widget-content { padding-block: 20px; }
 @media (max-width:760px) {
-  .status-bar:has(#undo:not([hidden])) .brand > span:last-child { display: none; }
 }
 /* Extended forecasts live in their dedicated dialog, keeping home cards glanceable. */
 .widget .weather-details { display: none; }
