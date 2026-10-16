@@ -7,14 +7,14 @@
   <meta name="description" content="検索、時間割、天気を自分らしく並べる、新しいタブ。">
   <title>NewTab</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=20261016-canvas-5">
-  <link rel="stylesheet" href="features.css?v=20261016-canvas-5">
-  <link rel="stylesheet" href="settings.css?v=20261016-canvas-5">
-  <link rel="stylesheet" href="glass.css?v=20261016-canvas-5">
+  <link rel="stylesheet" href="style.css?v=20261016-edit-6">
+  <link rel="stylesheet" href="features.css?v=20261016-edit-6">
+  <link rel="stylesheet" href="settings.css?v=20261016-edit-6">
+  <link rel="stylesheet" href="glass.css?v=20261016-edit-6">
   <script src="vendor/cupertino-pane/cupertino-pane.min.js?v=1.5.4" defer></script>
-  <script src="drawer.js?v=20261016-canvas-5" defer></script>
-  <script src="core.js?v=20261016-canvas-5" defer></script>
-  <script src="app.js?v=20261016-canvas-5" defer></script>
+  <script src="drawer.js?v=20261016-edit-6" defer></script>
+  <script src="core.js?v=20261016-edit-6" defer></script>
+  <script src="app.js?v=20261016-edit-6" defer></script>
 </head>
 <body>
   <div id="wallpaper" aria-hidden="true"></div><div id="shade" aria-hidden="true"></div>
@@ -23,7 +23,7 @@
     <div id="viewport"><div id="pages"></div></div>
   </main>
   <footer class="home-footer"><div id="page-nav" aria-label="ホームのページ"></div><div class="dock-surface"><nav id="dock" aria-label="よく使うサイト"></nav><div class="dock-tools" aria-label="ホームの操作"><button id="undo" class="round" aria-label="元に戻す" title="元に戻す" hidden></button><button id="edit" class="round" aria-label="ホームを編集" title="ホームを編集" aria-pressed="false"></button><button id="settings" class="round" aria-label="設定を開く" title="設定を開く"></button></div></div></footer>
-  <div id="edit-guide" hidden>グリップで移動 · 右下でサイズ変更 · 端まで運ぶと別のページへ</div>
+  <div id="edit-guide" hidden>そのままドラッグで移動 · 右下でサイズ変更 · ✓で完了</div>
   <dialog id="sheet" aria-labelledby="sheet-title"><div id="sheet-content" class="drawer-content"><div id="sheet-grabber" class="sheet-grabber" role="button" tabindex="0" aria-label="パネルの高さを切り替え" title="ドラッグして高さを変更。矢印キーでも操作できます。"><span></span></div><div class="settings-frame"><aside id="settings-sidebar" aria-label="設定のカテゴリ" hidden><div class="sidebar-heading">設定</div><label class="settings-search"><span id="settings-search-icon" aria-hidden="true"></span><input id="settings-filter" type="search" placeholder="設定を検索" aria-label="設定を検索"></label><nav id="settings-nav" aria-label="設定項目"></nav><div class="sidebar-footer"><span class="sidebar-app-icon" aria-hidden="true">N</span><div><strong>NewTab</strong><small>あなたのためのホーム</small></div></div></aside><div class="settings-detail"><div class="sheet-head"><button id="sheet-back" class="plain" hidden>戻る</button><h1 id="sheet-title">設定</h1><button class="round close-dialog" aria-label="閉じる">×</button></div><div id="sheet-body"></div></div></div></div></dialog>
   <dialog id="folder-sheet" aria-labelledby="folder-title"><div class="folder-head"><h2 id="folder-title"></h2><button class="round close-dialog" aria-label="フォルダを閉じる">×</button></div><div id="folder-items"></div><div id="folder-actions"></div></dialog>
   <div id="toast" role="status" aria-live="polite" hidden></div>

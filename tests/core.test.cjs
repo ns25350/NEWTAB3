@@ -19,4 +19,20 @@ test('Queries support commands, direct URLs, and escaped search terms',()=>{asse
 test('Weather hour selection uses UTC epoch and handles exact-hour boundaries',()=>{const h={hourly:{time:[1000,4600,8200]}};assert.equal(C.weatherHourIndex(h,4600*1000),1);assert.equal(C.weatherHourIndex(h,6400*1000),1);assert.equal(C.weatherHourIndex(h,50*1000),0)});
 test('Saved layout widget visibility survives export and import',()=>{const d=C.defaults();d.layouts=[{id:'simple',name:'Simple',grid:d.grid,pages:d.pages,widgets:{...d.widgets,weather:{enabled:false,style:null}}}];const n=C.normalize(d);assert.equal(n.layouts[0].widgets.weather.enabled,false)});
 test('Material choices and legacy settings preserve user layouts and appearance overrides',()=>{const d=C.defaults();d.appearance.material='solid';d.appearance.opacity=67;d.widgets.clock.style={opacity:72,blur:20,radius:30,shadow:8,text:'#112233',accent:'#336699'};const n=C.normalize(C.clone(d));assert.equal(n.appearance.material,'solid');assert.equal(n.appearance.opacity,67);assert.deepEqual(n.pages,d.pages);assert.deepEqual(n.widgets.clock.style,d.widgets.clock.style);delete d.appearance.material;const legacy=C.normalize(d);assert.equal(legacy.appearance.material,'glass');assert.deepEqual(legacy.pages,d.pages);assert.equal(legacy.appearance.opacity,67)});
+test('Shortcut labels reserve a complete line in tight grids and enlarged text without collisions',()=>{
+ for(const [row,gap,font] of [[40,8,16],[48,14,16],[60,20,16],[136,20,32]]){
+  const d=C.defaults(),items=d.pages[0].items.map(i=>i.id.startsWith('s:')?{...i,h:1}:i),packed=C.displayItems(items,4,12,row,gap,font);
+  assert.equal(packed.length,items.length);noOverlap({grid:{columns:4},pages:[{items:packed}]});
+  for(const i of packed.filter(i=>i.id.startsWith('s:')))assert(i.h*row+(i.h-1)*gap>=84+font*.8125*1.5);
+ }
+});
+test('Compact edits round-trip through saved columns without shifting the drop or shrinking wide widgets',()=>{
+ for(const cols of [6,8,12,16]){
+  const original=C.defaults().pages[0].items,shown=C.displayItems(original,4,12,60,20),moved=shown.map(i=>i.id==='clock'?{...i,x:0,y:16}:i);
+  const stored=C.restoreColumns(moved,original,4,cols),again=C.displayItems(stored,4,cols,60,20);
+  for(const i of moved)assert.deepEqual(again.find(j=>j.id===i.id),i);
+  assert.equal(stored.find(i=>i.id==='search').w,Math.min(cols,8));
+  noOverlap({grid:{columns:cols},pages:[{items:stored}]});
+ }
+});
 console.log(`${checks} checks passed.`);

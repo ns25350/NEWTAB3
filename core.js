@@ -21,6 +21,11 @@ function overlaps(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y
 function canPlace(items,box,cols,except){return box.x>=0&&box.y>=0&&box.w>=1&&box.h>=1&&box.x+box.w<=cols&&box.y+box.h<=4096&&!items.some(i=>i.id!==except&&overlaps(i,box))}
 function freeSpot(items,w,h,cols){w=Math.min(w,cols);for(let y=0;y<=4096-h;y++)for(let x=0;x<=cols-w;x++){let b={x,y,w,h};if(canPlace(items,b,cols))return b}return null}
 function pack(items,cols,oldCols=cols){const result=[];for(const it of items){let b={...it,w:Math.min(it.w,cols),x:Math.min(Math.round(it.x*cols/oldCols),cols-Math.min(it.w,cols))};if(!canPlace(result,b,cols))b={...it,...freeSpot(result,b.w,b.h,cols)};if(canPlace(result,b,cols))result.push(b)}return result}
+// Reserve the icon, spacing and a complete line of text, even in imported tight grids.
+function minimumRows(id,rowHeight,gap,fontSize=16){return WIDGETS.includes(id)?1:Math.max(1,Math.ceil((60+24+fontSize*.8125*1.5+gap)/(rowHeight+gap)))}
+function displayItems(items,cols,oldCols,rowHeight,gap,fontSize=16){return pack(items.map(i=>({...i,h:Math.max(i.h,minimumRows(i.id,rowHeight,gap,fontSize))})),cols,oldCols)}
+// Store compact-screen edits in the original column system; do not project twice.
+function restoreColumns(items,originals,cols,originalCols,resizedId){return pack(items.map(i=>{const original=originals.find(o=>o.id===i.id),w=i.id===resizedId?i.w:original?.w??i.w;return{...i,w,x:Math.min(Math.round(i.x*originalCols/cols),originalCols-w)}}),originalCols)}
 function minutes(s){if(!/^\d{2}:\d{2}$/.test(s))return NaN;const[h,m]=s.split(':').map(Number);return h<24&&m<60?h*60+m:NaN}
 function validTimes(v){return Array.isArray(v)&&v.length===7&&v.every((t,i)=>Array.isArray(t)&&t.length===2&&Number.isFinite(minutes(t[0]))&&minutes(t[0])<minutes(t[1])&&(!i||minutes(v[i-1][1])<=minutes(t[0])))}
 function lessonStatus(times,now){const n=now.getHours()*60+now.getMinutes();const current=times.findIndex(t=>n>=minutes(t[0])&&n<minutes(t[1]));const next=times.findIndex(t=>minutes(t[0])>n);return{current,next,remaining:current>=0?minutes(times[current][1])-n:next>=0?minutes(times[next][0])-n:0}}
@@ -60,5 +65,5 @@ function normalize(raw){
  d.layouts=(Array.isArray(o.layouts)?o.layouts:[]).slice(0,20).map(l=>{const seen=new Set();return{id:str(l.id,uid()),name:str(l.name,'配置',40),widgets:Object.fromEntries(WIDGETS.map(k=>[k,{enabled:l.widgets?.[k]?.enabled??d.widgets[k].enabled,style:d.widgets[k].style}])),grid:{columns:Math.round(clamp(l.grid?.columns,6,16,12)),rowHeight:clamp(l.grid?.rowHeight,40,120,60),gap:clamp(l.grid?.gap,8,40,20)},pages:(Array.isArray(l.pages)?l.pages:[]).slice(0,6).map(p=>({id:str(p.id,uid()),name:str(p.name,'ページ',40),items:cleanItems(p.items,seen)}))}}).filter(l=>l.pages.length);
  return d;
 }
-root.NewTabCore={VERSION,KEY,WIDGETS,LABELS,ENGINES,TIMES,CLASSES,clone,uid,clamp,str,color,url,defaults,overlaps,canPlace,freeSpot,pack,minutes,validTimes,lessonStatus,dayOffset,queryTarget,weatherHourIndex,migrate,normalize};
+root.NewTabCore={VERSION,KEY,WIDGETS,LABELS,ENGINES,TIMES,CLASSES,clone,uid,clamp,str,color,url,defaults,overlaps,canPlace,freeSpot,pack,minimumRows,displayItems,restoreColumns,minutes,validTimes,lessonStatus,dayOffset,queryTarget,weatherHourIndex,migrate,normalize};
 })(typeof window==='undefined'?globalThis:window);

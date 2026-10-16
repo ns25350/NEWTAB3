@@ -68,6 +68,13 @@ async function noOverflow(page) {
     assert.equal(await page.locator('.lessons .lesson').count(), 7);
     await noOverflow(page);
     pass('Desktop: weather and seven lessons render from fixture responses without overlapping cards');
+    const homeBoxes = () => page.locator('#home .item').evaluateAll(nodes => nodes.map(n => ({ id: n.dataset.key, ...n.getBoundingClientRect().toJSON() })));
+    const originalBoxes = await homeBoxes();
+    await page.locator('#edit').click();
+    assert.deepEqual(await homeBoxes(), originalBoxes);
+    await page.locator('#edit').click();
+    assert.deepEqual(await homeBoxes(), originalBoxes);
+    pass('All default widgets and shortcuts keep identical positions and dimensions when editing starts and ends');
 
     await page.keyboard.press('/');
     assert.equal(await page.locator('#search-input').evaluate(n => n === document.activeElement), true);
@@ -101,6 +108,7 @@ async function noOverflow(page) {
 
     await page.locator('#edit').click();
     assert.equal(await page.locator('#edit').getAttribute('aria-pressed'), 'true');
+    await page.locator('[data-key=clock]').click();
     await page.locator('[data-key=clock] .configure').click();
     await page.getByRole('spinbutton', { name: '高さ', exact: true }).fill('2');
     await page.getByRole('button', { name: '配置を変更', exact: true }).click();
@@ -315,6 +323,153 @@ async function noOverflow(page) {
     }
     pass('Full-screen canvas uses the full width and height; bottom items scroll above the floating Dock');
 
+    for (const width of [320, 774, 1440]) {
+      for (const [rowHeight, gap, fontSize] of [[40, 8, 16], [48, 14, 16], [60, 20, 32]]) {
+        const labels = await open(browser, { viewport: { width, height: 700 } });
+        const lp = labels.page;
+        await lp.evaluate(({ rowHeight, gap }) => {
+          const s = NewTabCore.defaults();
+          s.grid = { columns: 12, rowHeight, gap };
+          Object.values(s.widgets).forEach(w => w.enabled = false);
+          s.shortcuts = ['Classroom', 'ChatGPT', 'Gemini', 'Claude'].map((name, i) => ({ id: 'label' + i, name, url: 'https://example.com/' + i, color: '#ffffff' }));
+          s.pages = [{ id: 'labels', name: 'ホーム', items: s.shortcuts.map((v, i) => ({ id: 's:' + v.id, x: i * 3, y: 12, w: 3, h: 1 })) }];
+          s.activePage = 'labels';
+          localStorage.setItem(NewTabCore.KEY, JSON.stringify(s));
+        }, { rowHeight, gap });
+        await lp.reload({ waitUntil: 'domcontentloaded' });
+        if (fontSize !== 16) {
+          await lp.evaluate(() => { document.documentElement.style.fontSize = '200%'; window.dispatchEvent(new Event('resize')); });
+          await lp.waitForTimeout(220);
+        }
+        await lp.locator('#home .shortcut').last().evaluate(n => n.scrollIntoView({ block: 'end' }));
+        const boxes = () => lp.locator('#home .item').evaluateAll(nodes => nodes.map(n => ({ id: n.dataset.key, ...n.getBoundingClientRect().toJSON() })));
+        const before = await boxes();
+        const saved = await lp.evaluate(() => localStorage.getItem(NewTabCore.KEY));
+        for (const edit of [true, false]) {
+          await lp.locator('#edit').click();
+          assert.equal(await lp.locator('#edit').getAttribute('aria-pressed'), String(edit));
+          assert.deepEqual(await boxes(), before, 'Editing must not move or stretch grid items');
+          const text = await lp.locator('#home .app-label').evaluateAll(nodes => nodes.map(n => {
+            const r = n.getBoundingClientRect(), tile = n.closest('.item').getBoundingClientRect();
+            return { completeLine: r.height >= parseFloat(getComputedStyle(n).lineHeight) - 1, unshrunk: n.scrollHeight <= n.clientHeight + 1, contained: r.top >= tile.top && r.bottom <= tile.bottom };
+          }));
+          if (edit && width === 774 && rowHeight === 40) {
+            const tile = lp.locator('#home .shortcut').last();
+            await tile.click();
+            const handle = await tile.locator('.resize').boundingBox();
+            const tileBox = await tile.boundingBox();
+            await lp.mouse.move(handle.x + 22, handle.y + 22);
+            await lp.mouse.down();
+            await lp.mouse.move(handle.x + 22, handle.y - 250, { steps: 8 });
+            assert(Math.abs((await lp.locator('.ghost').boundingBox()).height - tileBox.height) < 1, 'Resize must reserve the complete label line');
+            await lp.mouse.up();
+          }
+          assert.equal(text.length, 4);
+          assert(text.every(t => t.completeLine && t.unshrunk && t.contained), JSON.stringify(text));
+          await noOverflow(lp);
+        }
+        assert.equal(await lp.evaluate(() => localStorage.getItem(NewTabCore.KEY)), saved, 'Toggling edit must not rewrite the saved layout');
+        const bottom = await lp.locator('#home .shortcut').last().boundingBox();
+        const footer = await lp.locator('.home-footer').boundingBox();
+        assert(bottom.y + bottom.height < footer.y, 'The last label must scroll above the Dock');
+        if (width === 774 && rowHeight === 48) await lp.screenshot({ path: '/tmp/newtab-shortcut-labels.png' });
+        assert.deepEqual(labels.errors, []);
+        await labels.context.close();
+      }
+    }
+    pass('Identical edit/live geometry and complete shortcut labels at 320/774/1440px, tight grids, bottom rows and 200% text');
+
+    for (const touch of [false, true]) {
+      const editor = await open(browser, { viewport: { width: touch ? 390 : 1440, height: 900 }, hasTouch: touch, isMobile: touch });
+      const ep = editor.page;
+      await ep.evaluate(() => {
+        const s = NewTabCore.defaults();
+        Object.entries(s.widgets).forEach(([k, w]) => w.enabled = k === 'clock');
+        s.shortcuts = s.shortcuts.slice(0, 1);
+        s.pages = [{ id: 'editing', name: 'ホーム', items: [{ id: 'clock', x: 0, y: 0, w: 2, h: 2 }, { id: 's:google', x: 2, y: 0, w: 2, h: 2 }] }];
+        s.activePage = 'editing';
+        localStorage.setItem(NewTabCore.KEY, JSON.stringify(s));
+      });
+      await ep.reload({ waitUntil: 'domcontentloaded' });
+      await ep.evaluate(() => document.addEventListener('click', e => { if (e.target.closest('#home [data-key="s:google"] a')) { window.normalTap = !e.defaultPrevented; e.preventDefault(); } }));
+      if (touch) await ep.locator('[data-key="s:google"] a').tap();
+      else await ep.locator('[data-key="s:google"] a').click();
+      assert.equal(await ep.evaluate(() => window.normalTap), true, 'An ordinary tap must retain link behavior');
+      assert.equal(await ep.locator('#edit').getAttribute('aria-pressed'), 'false');
+      const cdp = touch ? await editor.context.newCDPSession(ep) : null;
+      const down = async (x, y) => {
+        if (touch) await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+        else { await ep.mouse.move(x, y); await ep.mouse.down(); }
+      };
+      const move = async (x, y) => {
+        if (touch) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y }] });
+        else await ep.mouse.move(x, y, { steps: 12 });
+      };
+      const up = async () => {
+        if (touch) await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        else await ep.mouse.up();
+      };
+      if (touch) {
+        await down(190, 480);
+        for (let i = 1; i <= 5; i++) { await move(190, 480 - i * 40); await ep.waitForTimeout(20); }
+        await up();
+        await ep.waitForTimeout(150);
+        assert.equal(await ep.locator('#edit').getAttribute('aria-pressed'), 'false', 'A normal scroll must not enter editing');
+        assert(await ep.locator('#home').evaluate(n => n.scrollTop > 0), 'Normal touch scrolling must remain available');
+        await ep.locator('#home').evaluate(n => n.scrollTop = 0);
+      }
+      const clock = ep.locator('#home [data-key=clock]');
+      const original = await clock.boundingBox();
+      const step = await ep.locator('.grid').evaluate(n => { const s = getComputedStyle(n); return { x: parseFloat(s.gridTemplateColumns) + parseFloat(s.columnGap), y: parseFloat(s.gridAutoRows) + parseFloat(s.rowGap) }; });
+      const x = original.x + original.width / 2, y = original.y + original.height / 2;
+      await down(x, y);
+      await ep.waitForTimeout(1150);
+      assert.equal(await ep.locator('#edit').getAttribute('aria-pressed'), 'true');
+      assert.equal(await ep.locator('.drag-preview').count(), 1);
+      const previewBox = await ep.locator('.drag-preview').boundingBox();
+      assert(Math.abs(previewBox.width - original.width) < 1 && Math.abs(previewBox.height - original.height) < 1);
+      await move(x + step.x * 2, y + step.y * 4);
+      assert.equal(await ep.locator('.ghost.invalid').count(), 0);
+      const ghost = await ep.locator('.ghost').boundingBox();
+      assert(Math.abs(ghost.width - original.width) < 1 && Math.abs(ghost.height - original.height) < 1);
+      if (!touch) await ep.screenshot({ path: '/tmp/newtab-direct-edit.png' });
+      await up();
+      assert.equal(await ep.locator('.drag-preview, .ghost').count(), 0);
+      let dropped = await clock.boundingBox();
+      assert(Math.abs(dropped.x - (original.x + step.x * 2)) < 1 && Math.abs(dropped.y - (original.y + step.y * 4)) < 1, 'The card must stay where the preview was dropped');
+      const resize = await clock.locator('.resize').boundingBox();
+      await down(resize.x + resize.width / 2, resize.y + resize.height / 2);
+      await move(resize.x + resize.width / 2, resize.y + resize.height / 2 + step.y);
+      const resized = await ep.locator('.ghost').boundingBox();
+      await up();
+      assert(Math.abs((await clock.boundingBox()).height - resized.height) < 1);
+      await ep.locator('#undo').click();
+      assert(Math.abs((await clock.boundingBox()).height - original.height) < 1);
+      const saved = await ep.evaluate(() => localStorage.getItem(NewTabCore.KEY));
+      dropped = await clock.boundingBox();
+      await down(dropped.x + dropped.width / 2, dropped.y + dropped.height / 2);
+      await move(dropped.x + dropped.width / 2, y);
+      assert.equal(await ep.locator('.ghost.invalid').count(), 1);
+      await up();
+      assert.equal(await ep.evaluate(() => localStorage.getItem(NewTabCore.KEY)), saved, 'An overlapping drop must preserve saved data');
+      await clock.focus();
+      await ep.keyboard.press('Enter');
+      await ep.locator('#sheet[data-pane-ready=true]').waitFor();
+      assert.equal(await ep.getByRole('spinbutton', { name: '列', exact: true }).inputValue(), '3');
+      assert.equal(await ep.getByRole('spinbutton', { name: '行', exact: true }).inputValue(), '5');
+      await ep.keyboard.press('Escape');
+      await ep.locator('#sheet').waitFor({ state: 'hidden' });
+      const edited = await clock.boundingBox();
+      await ep.locator('#edit').click();
+      assert.deepEqual(await clock.boundingBox(), edited);
+      await ep.reload({ waitUntil: 'domcontentloaded' });
+      assert.deepEqual(await clock.boundingBox(), edited, 'Reload must preserve the displayed drop position');
+      assert.deepEqual(editor.errors, []);
+      await noOverflow(ep);
+      await editor.context.close();
+    }
+    pass('Mouse and touch: normal tap, long-press direct drag, accurate drop/resize, undo, collision rejection, keyboard alternative and reload');
+
     const offlineContext = await browser.newContext();
     const offlinePage = await offlineContext.newPage();
     await offlinePage.goto(baseURL, { waitUntil: 'domcontentloaded' });
@@ -326,10 +481,10 @@ async function noOverflow(page) {
       if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
     });
     const cachedFiles = await offlinePage.evaluate(async () => {
-      const cache = await caches.open('newtab-original-shell-canvas-5');
+      const cache = await caches.open('newtab-original-shell-edit-6');
       return (await cache.keys()).map(r => r.url);
     });
-    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261016-canvas-5')));
+    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261016-edit-6')));
     assert.equal(await offlinePage.evaluate(async () => (await caches.keys()).includes('newtab-original-shell-2')), false);
     await offlineContext.setOffline(true);
     await offlinePage.reload({ waitUntil: 'domcontentloaded' });
