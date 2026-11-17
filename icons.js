@@ -26,19 +26,16 @@ function mix(hex,other,amount){return '#'+rgb(hex).map((v,i)=>Math.round(v*(1-am
 const cache=new Map(),sources=new WeakMap();
 function artwork(shortcut){
  const key=resolve(shortcut),dark=document.documentElement.dataset.appearance==='dark';
- const tint=NewTabCore.color(shortcut.color,'#5088be');
- let color=brands[key]?.color||tint;
- if(!brands[key]&&rgb(color).reduce((a,b)=>a+b,0)>570)color='#3b617e';
- if(dark&&['github','notion','wikipedia'].includes(key))color='#e0e8ff';
- const id=[key,tint,color,dark].join(':');if(cache.has(id))return cache.get(id);
+ const tint=dark?'#777777':'#f0f0f0',color=dark?'#eeeeee':'#3a3a3a';
+ const id=[key,dark].join(':');if(cache.has(id))return cache.get(id);
  const glyph=brands[key]?`<path d="${brands[key].path}"/>`:`<path d="${symbols[key][1]}" fill="none" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`;
- const base=dark?'#b5cdf4':'#ffffff';
+ const base=dark?'#d8d8d8':'#ffffff';
  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
  <defs>
  <linearGradient id="face" x1="9" y1="0" x2="53" y2="64" gradientUnits="userSpaceOnUse"><stop stop-color="${base}" stop-opacity=".52"/><stop offset=".52" stop-color="${base}" stop-opacity=".12"/><stop offset="1" stop-color="${tint}" stop-opacity=".25"/></linearGradient>
  <linearGradient id="rim" x1="4" y1="0" x2="58" y2="64" gradientUnits="userSpaceOnUse"><stop stop-color="white" stop-opacity=".98"/><stop offset=".42" stop-color="white" stop-opacity=".3"/><stop offset="1" stop-color="white" stop-opacity=".6"/></linearGradient>
- <linearGradient id="ink" x1="4" y1="1" x2="20" y2="25" gradientUnits="userSpaceOnUse"><stop stop-color="${mix(color,'#ffffff',.14)}"/><stop offset=".52" stop-color="${color}"/><stop offset="1" stop-color="${mix(color,'#10233d',.18)}"/></linearGradient>
- <filter id="lift" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="1.3" stdDeviation=".7" flood-color="#0c2846" flood-opacity=".26"/></filter>
+ <linearGradient id="ink" x1="4" y1="1" x2="20" y2="25" gradientUnits="userSpaceOnUse"><stop stop-color="${mix(color,'#ffffff',.14)}"/><stop offset=".52" stop-color="${color}"/><stop offset="1" stop-color="${mix(color,'#000000',.18)}"/></linearGradient>
+ <filter id="lift" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="1.3" stdDeviation=".7" flood-color="#000000" flood-opacity=".26"/></filter>
  </defs>
  <rect x=".8" y=".8" width="62.4" height="62.4" rx="15.2" fill="url(#face)" stroke="url(#rim)" stroke-width="1.2"/>
  <path d="M8 10C18 1 42 1 56 9" stroke="white" stroke-opacity=".32" stroke-width="1.2" stroke-linecap="round"/>
@@ -48,7 +45,7 @@ function artwork(shortcut){
  const result='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
  if(cache.size>256)cache.clear();cache.set(id,result);return result;
 }
-function create(shortcut){const n=document.createElement('span');n.className='app-icon glass-app-icon';n.dataset.artwork=resolve(shortcut);n.style.setProperty('--icon-tint',NewTabCore.color(shortcut.color,'#5088be'));const img=new Image();img.alt='';img.className='icon-artwork';img.decoding='sync';img.draggable=false;img.src=artwork(shortcut);n.append(img);sources.set(n,shortcut);return n}
+function create(shortcut){const n=document.createElement('span');n.className='app-icon glass-app-icon';n.dataset.artwork=resolve(shortcut);const img=new Image();img.alt='';img.className='icon-artwork';img.decoding='sync';img.draggable=false;img.src=artwork(shortcut);n.append(img);sources.set(n,shortcut);return n}
 function refresh(){for(const n of document.querySelectorAll('.glass-app-icon')){const shortcut=sources.get(n);if(shortcut)n.querySelector('.icon-artwork').src=artwork(shortcut)}}
 window.NewTabIcons={create,resolve,artwork,refresh,options:[['auto','自動（サイトの図柄）'],...Object.entries(symbols).map(([id,v])=>[id,v[0]])]};
 })();

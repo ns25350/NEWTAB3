@@ -361,17 +361,8 @@ async function noOverflow(page) {
             const r = n.getBoundingClientRect(), tile = n.closest('.item').getBoundingClientRect();
             return { completeLine: r.height >= parseFloat(getComputedStyle(n).lineHeight) - 1, unshrunk: n.scrollHeight <= n.clientHeight + 1, contained: r.top >= tile.top && r.bottom <= tile.bottom };
           }));
-          if (edit && width === 774 && rowHeight === 40) {
-            const tile = lp.locator('#home .shortcut').last();
-            await tile.click();
-            const handle = await tile.locator('.resize').boundingBox();
-            const tileBox = await tile.boundingBox();
-            await lp.mouse.move(handle.x + 22, handle.y + 22);
-            await lp.mouse.down();
-            await lp.mouse.move(handle.x + 22, handle.y - 250, { steps: 8 });
-            assert(Math.abs((await lp.locator('.ghost').boundingBox()).height - tileBox.height) < 1, 'Resize must reserve the complete label line');
-            await lp.mouse.up();
-          }
+          assert.equal(await lp.locator('#home .shortcut :is(.resize,.grip,.size)').count(),0);
+          assert.equal(await lp.locator('#home .app-label').first().evaluate(n=>getComputedStyle(n).visibility),edit?'hidden':'visible');
           assert.equal(text.length, 4);
           assert(text.every(t => t.completeLine && t.unshrunk && t.contained), JSON.stringify(text));
           await noOverflow(lp);
@@ -523,7 +514,9 @@ async function noOverflow(page) {
       await lp.locator('input[name=name]').fill('資料とノート');
       await lp.locator('input[name=url]').fill('https://example.com/notes');
       await lp.locator('select[name=symbol]').selectOption('book');
-      await lp.locator('input[name=color]').fill('#4b87b6');
+      assert.equal(await lp.locator('input[name=color]').count(),0);
+      assert.equal(await lp.getByRole('spinbutton',{name:'幅',exact:true}).count(),0);
+      assert.equal(await lp.getByRole('spinbutton',{name:'高さ',exact:true}).count(),0);
       assert.equal(await lp.locator('.shortcut-preview .glass-app-icon').getAttribute('data-artwork'),'book');
       assert.equal(await lp.locator('input[name=dock]').isChecked(),false);
       await lp.locator('.form-stack button[type=submit]').click();
@@ -590,7 +583,7 @@ async function noOverflow(page) {
     const decoded=await ap.evaluate(async()=>{
       const urls=['https://google.com','https://youtube.com','https://classroom.google.com','https://drive.google.com','https://mail.google.com','https://github.com','https://chatgpt.com','https://gemini.google.com','https://claude.ai','https://notion.so','https://wikipedia.org','https://discord.com','https://figma.com'];
       const all=[...urls.map(url=>({url,color:'#568ac4',symbol:'auto'})),...NewTabIcons.options.map(([symbol])=>({url:'https://example.org',color:'#568ac4',symbol}))];const appearance=document.documentElement.dataset.appearance;
-      for(const dark of ['light','dark']){document.documentElement.dataset.appearance=dark;for(const shortcut of all){const src=NewTabIcons.artwork(shortcut),svg=decodeURIComponent(src.split(',')[1]);if(!svg.includes('<svg')||/<script|<foreignObject|<image|onload=/.test(svg))throw Error('Unsafe SVG');const image=new Image();image.src=src;await image.decode()}}
+      for(const dark of ['light','dark']){document.documentElement.dataset.appearance=dark;for(const shortcut of all){const src=NewTabIcons.artwork(shortcut),svg=decodeURIComponent(src.split(',')[1]);if(!svg.includes('<svg')||/<script|<foreignObject|<image|onload=/.test(svg))throw Error('Unsafe SVG');for(const hex of svg.match(/#[0-9a-f]{6}/gi)||[])if(hex.slice(1,3)!==hex.slice(3,5)||hex.slice(3,5)!==hex.slice(5,7))throw Error('Non-monochrome SVG');const image=new Image();image.src=src;await image.decode()}}
       document.documentElement.dataset.appearance=appearance;NewTabIcons.refresh();return all.length*2;
     });
     assert.equal(decoded,48);
@@ -612,12 +605,12 @@ async function noOverflow(page) {
       if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
     });
     const cachedFiles = await offlinePage.evaluate(async () => {
-      const cache = await caches.open('newtab-original-shell-glass-dock-7');
+      const cache = await caches.open('newtab-original-shell-mono-folders-8');
       return (await cache.keys()).map(r => r.url);
     });
-    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261117-glass-dock-7')));
-    assert(cachedFiles.some(url => url.endsWith('icons.js?v=20261117-glass-dock-7')));
-    assert(cachedFiles.some(url => url.endsWith('icons.css?v=20261117-glass-dock-7')));
+    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261117-mono-folders-8')));
+    assert(cachedFiles.some(url => url.endsWith('icons.js?v=20261117-mono-folders-8')));
+    assert(cachedFiles.some(url => url.endsWith('icons.css?v=20261117-mono-folders-8')));
     assert.equal(await offlinePage.evaluate(async () => (await caches.keys()).includes('newtab-original-shell-2')), false);
     await offlineContext.setOffline(true);
     await offlinePage.reload({ waitUntil: 'domcontentloaded' });

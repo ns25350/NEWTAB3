@@ -43,3 +43,99 @@
 .shortcut-editor-mode .shortcut-preview { padding: 14px; }
 .shortcut-editor-mode .shortcut-preview .app-icon { width: 68px; height: 68px; }
 #sheet.shortcut-editor-mode .form-stack > .action-button { min-height: 44px; font-size: .875rem; border-radius: 12px; }
+
+/* Monochrome glass: the glyph, body and reflections share one neutral palette. */
+.glass-app-icon { background: #ffffff26; box-shadow: 0 6px 14px #00000021, inset 0 0 0 1px #ffffff50; backdrop-filter: blur(14px) saturate(0); -webkit-backdrop-filter: blur(14px) saturate(0); }
+.glass-app-icon::after { box-shadow: inset 0 1px 1px #ffffff70, inset 0 -1px 1px #0000001c; }
+:root[data-appearance=dark] .glass-app-icon { background: #ffffff14; box-shadow: 0 6px 15px #0004, inset 0 0 0 1px #ffffff35; }
+.glass-folder-icon { background: #ffffff35; border-color: #ffffff8c; box-shadow: 0 5px 14px #0003, inset 0 1px 1px #ffffffa8; backdrop-filter: blur(16px) saturate(0); -webkit-backdrop-filter: blur(16px) saturate(0); }
+
+/* The saved grid cell supplies spacing; the editing frame belongs to the icon. */
+.shortcut { display: flex; align-items: center; justify-content: center; padding: 8px 0; }
+.shortcut-face { position: relative; width: var(--icon-size); height: var(--icon-size); flex: 0 0 auto; margin-bottom: calc(8px + .8125rem * 1.5); border-radius: 24%; }
+.shortcut-face > .app-tile { display: block; width: 100%; height: 100%; min-height: 0; padding: 0; }
+.shortcut-face .app-label { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100cqw - 6px); }
+.shortcut-face .app-tile { -webkit-touch-callout: none; }
+.editing .shortcut, .editing .shortcut:is(.selected,:focus-visible) { outline: none; border-radius: 0; }
+.editing .shortcut .shortcut-face, .folder-editing .folder-entry .shortcut-face { outline: 1px dashed #ffffffa0; outline-offset: 4px; }
+.editing .shortcut:is(.selected,:focus-within) .shortcut-face, .folder-editing .folder-entry:focus-within .shortcut-face { outline: 2px solid #fff; }
+.editing .shortcut .app-label, .folder-editing .folder-entry .app-label { visibility: hidden; }
+.editing .shortcut .app-tile:hover .app-icon, .folder-editing .app-tile:hover .app-icon { transform: none; }
+.shortcut-face > .edit-tools { position: absolute; inset: 0; pointer-events: none; z-index: 7; }
+:is(.editing,.folder-editing) .shortcut-face > .edit-tools { display: block; }
+.shortcut-face .edit-tools button { width: 44px; height: 44px; top: -22px; color: #3b3b3b; border: 0; padding: 0; }
+.shortcut-face .edit-tools button::before { inset: 12px; border: 1px solid #ffffffa8; background: #f2f2f2ed; box-shadow: 0 2px 5px #0003; }
+.shortcut-face .edit-tools button svg { width: 12px; height: 12px; stroke-width: 2; }
+.shortcut-face .edit-tools .remove { left: -22px; }
+.shortcut-face .edit-tools .configure { right: -22px; visibility: visible; }
+:root[data-appearance=dark] .shortcut-face .edit-tools button { color: #eee; }
+:root[data-appearance=dark] .shortcut-face .edit-tools button::before { background: #343434ed; border-color: #ffffff6b; }
+.ghost.shortcut-ghost { border-radius: 24%; color: #fff; background: #ffffff35; border-color: #fff; font-size: 0; }
+.ghost.shortcut-ghost.invalid { background: #c93e5b70; border-color: #f7c7cf; }
+.ghost.shortcut-ghost.folder-target { background: #ffffff70; border-color: #fff; }
+
+/* A folder opens as a glass collection over the existing home. */
+#folder-sheet { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 24px 16px; border: 0; border-radius: 0; background: transparent !important; box-shadow: none; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; overflow: hidden; animation: none; }
+#folder-sheet[open] { display: flex; align-items: center; justify-content: center; }
+#folder-sheet::backdrop { background: #10131b58; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.folder-window { display: flex; flex-direction: column; width: min(560px,100%); max-height: 100%; min-height: 0; color: #fff; }
+#folder-sheet .folder-head { display: flex; align-items: center; gap: 6px; margin: 0; padding: 0 4px 16px; flex: 0 0 auto; }
+#folder-title { flex: 1; min-width: 0; font-size: 1.625rem; font-weight: 550; letter-spacing: -.035em; overflow-wrap: anywhere; }
+#folder-sheet .folder-head .round { width: 44px; height: 44px; min-width: 44px; background: #ffffff16; color: #fff; }
+#folder-rename svg { width: 16px; height: 16px; }
+.folder-panel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; border: 1px solid #ffffff8c; border-radius: 34px; background: linear-gradient(140deg,#ffffff38,#ffffff0a),#ffffff16; backdrop-filter: blur(36px) saturate(.8); -webkit-backdrop-filter: blur(36px) saturate(.8); box-shadow: inset 0 1px 1px #ffffffe0,inset 0 -1px 1px #ffffff30,0 24px 70px #0004; scrollbar-width: thin; touch-action: pan-y; }
+#folder-items { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 24px 28px; padding: 28px 24px; min-height: 164px; }
+.folder-entry { position: relative; min-width: 0; display: flex; align-items: center; justify-content: center; padding: 8px 0; container-type: inline-size; container-name: tile; }
+.folder-entry .app-label { color: #fff; text-shadow: 0 1px 4px #0008; }
+.folder-entry.moving .shortcut-face { visibility: hidden; }
+.folder-entry.moving .edit-tools, .folder-entry.moving .edit-tools * { visibility: hidden !important; }
+.folder-editing .glass-app-icon { animation: edit-wiggle calc(400ms / max(.01,var(--motion))) ease-in-out infinite alternate; }
+#folder-hint { font-size: .75rem; line-height: 1.6; color: #ffffffc7; text-align: center; padding: 14px 8px 0; }
+#folder-sheet.extracting .folder-window { opacity: 0; pointer-events: none; }
+#folder-sheet.extracting::backdrop { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.folder-drag-preview { position: fixed; z-index: 10; pointer-events: none; width: 60px; height: 60px; animation: none !important; filter: drop-shadow(0 12px 16px #0005); }
+#folder-sheet .folder-extract-menu { position: relative; z-index: 20; margin: 12px auto 0; padding: 8px; background: #f2f2f2ed; color: #333; border-radius: 15px; }
+.folder-extract-menu button { min-height: 44px; padding: 10px 16px; text-align: left; }
+@media (max-width:370px) {
+  #folder-items { padding: 24px 16px; column-gap: 16px; }
+  .folder-entry .edit-tools button { width: 28px; height: 28px; top: -14px; }
+  .folder-entry .edit-tools button::before { inset: 4px; }
+  .folder-entry .edit-tools .remove { left: -14px; }
+  .folder-entry .edit-tools .configure { right: -14px; }
+}
+@media (min-width:700px) and (max-height:500px) {
+  .folder-window { width: min(680px,100%); }
+  #folder-items { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px 24px; padding: 24px; }
+  #folder-sheet .folder-head { padding-bottom: 10px; }
+  #folder-hint { padding-top: 8px; }
+}
+@media (prefers-reduced-motion:reduce) { .folder-editing .glass-app-icon { animation: none; } }
+.motion-off .folder-editing .glass-app-icon { animation: none; }
+@media (prefers-reduced-transparency:reduce), (prefers-contrast:more) {
+  .glass-app-icon, .glass-folder-icon { background: #f2f2f2 !important; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  :root[data-appearance=dark] .glass-app-icon { background: #2b2b2b !important; }
+  #folder-sheet::backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .folder-panel { background: #ededed; border-color: #555; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .folder-panel .app-label { color: #222; text-shadow: none; }
+  :root[data-appearance=dark] .folder-panel { background: #2b2b2b; border-color: #aaa; }
+  :root[data-appearance=dark] .folder-panel .app-label { color: #eee; }
+}
+.glass-folder-icon { grid-template-rows: repeat(3,minmax(0,1fr)); }
+body.editing #toast { bottom: calc(var(--dock-clearance) + 56px); }
+.editing .shortcut .glass-folder-icon .mini { animation: none; }
+#folder-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; line-height: 1.25; max-height: 2.5em; }
+@media (max-height:500px) { #folder-hint { display: none; } }
+#toast { pointer-events: none; }
+/* A regular glass surface keeps names readable over light and dark wallpapers. */
+#folder-sheet::backdrop { background: #10131b94; }
+.folder-panel { background: linear-gradient(140deg,#ffffff30,#ffffff04),rgba(246,246,246,.6); }
+.folder-panel .app-label { color: #272727; text-shadow: none; }
+#folder-hint { color: #fff; }
+:root[data-appearance=dark] .folder-panel { background: linear-gradient(140deg,#ffffff12,#ffffff00),rgba(35,35,35,.68); }
+:root[data-appearance=dark] .folder-panel .app-label { color: #f2f2f2; text-shadow: 0 1px 3px #0005; }
+:root[data-material=solid] .glass-app-icon { background: #f2f2f2; }
+:root[data-material=solid][data-appearance=dark] .glass-app-icon { background: #2b2b2b; }
+@media (prefers-reduced-transparency:reduce), (prefers-contrast:more) {
+  .folder-panel { background: #ededed; }
+  :root[data-appearance=dark] .folder-panel { background: #2b2b2b; }
+}
