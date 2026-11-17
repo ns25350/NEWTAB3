@@ -26,20 +26,21 @@ function mix(hex,other,amount){return '#'+rgb(hex).map((v,i)=>Math.round(v*(1-am
 const cache=new Map(),sources=new WeakMap();
 function artwork(shortcut){
  const key=resolve(shortcut),dark=document.documentElement.dataset.appearance==='dark';
- const tint=dark?'#777777':'#f0f0f0',color=dark?'#eeeeee':'#3a3a3a';
+ const color=dark?'#eeeeee':'#151515';
  const id=[key,dark].join(':');if(cache.has(id))return cache.get(id);
  const glyph=brands[key]?`<path d="${brands[key].path}"/>`:`<path d="${symbols[key][1]}" fill="none" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`;
- const base=dark?'#d8d8d8':'#ffffff';
+ const base='#ffffff';
  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
  <defs>
- <linearGradient id="face" x1="9" y1="0" x2="53" y2="64" gradientUnits="userSpaceOnUse"><stop stop-color="${base}" stop-opacity=".52"/><stop offset=".52" stop-color="${base}" stop-opacity=".12"/><stop offset="1" stop-color="${tint}" stop-opacity=".25"/></linearGradient>
+ <linearGradient id="face" x1="9" y1="0" x2="53" y2="64" gradientUnits="userSpaceOnUse"><stop stop-color="${base}" stop-opacity=".16"/><stop offset=".52" stop-color="${base}" stop-opacity=".015"/><stop offset="1" stop-color="${base}" stop-opacity=".075"/></linearGradient>
  <linearGradient id="rim" x1="4" y1="0" x2="58" y2="64" gradientUnits="userSpaceOnUse"><stop stop-color="white" stop-opacity=".98"/><stop offset=".42" stop-color="white" stop-opacity=".3"/><stop offset="1" stop-color="white" stop-opacity=".6"/></linearGradient>
- <linearGradient id="ink" x1="4" y1="1" x2="20" y2="25" gradientUnits="userSpaceOnUse"><stop stop-color="${mix(color,'#ffffff',.14)}"/><stop offset=".52" stop-color="${color}"/><stop offset="1" stop-color="${mix(color,'#000000',.18)}"/></linearGradient>
- <filter id="lift" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="1.3" stdDeviation=".7" flood-color="#000000" flood-opacity=".26"/></filter>
+ <linearGradient id="ink" x1="4" y1="1" x2="20" y2="25" gradientUnits="userSpaceOnUse"><stop stop-color="${mix(color,'#ffffff',.22)}" stop-opacity=".64"/><stop offset=".4" stop-color="${color}" stop-opacity=".8"/><stop offset="1" stop-color="${mix(color,'#000000',.14)}" stop-opacity=".86"/></linearGradient>
+ <linearGradient id="glyph-rim" x1="2" y1="1" x2="21" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="white" stop-opacity=".78"/><stop offset=".46" stop-color="white" stop-opacity=".1"/><stop offset="1" stop-color="white" stop-opacity=".38"/></linearGradient>
+ <filter id="lift" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="1.3" stdDeviation=".7" flood-color="#000000" flood-opacity=".18"/></filter>
  </defs>
  <rect x=".8" y=".8" width="62.4" height="62.4" rx="15.2" fill="url(#face)" stroke="url(#rim)" stroke-width="1.2"/>
  <path d="M8 10C18 1 42 1 56 9" stroke="white" stroke-opacity=".32" stroke-width="1.2" stroke-linecap="round"/>
- <g transform="translate(14 14) scale(1.5)" fill="url(#ink)" stroke="${brands[key]?'none':'url(#ink)'}" filter="url(#lift)">${glyph}</g>
+ <g transform="translate(14 14) scale(1.5)" fill="url(#ink)" stroke="${brands[key]?'url(#glyph-rim)':'url(#ink)'}" stroke-width=".4" paint-order="stroke fill" filter="url(#lift)">${glyph}</g>
  <path d="M12 56C24 61 44 61 53 53" stroke="white" stroke-opacity=".3" stroke-width="1.1" stroke-linecap="round"/>
  </svg>`;
  const result='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);

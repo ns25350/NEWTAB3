@@ -1,16 +1,16 @@
 /* Vector foreground, translucent body and specular rim form one app icon. */
 .glass-app-icon {
-  background: #eaf2ff24;
+  background: transparent;
   border-radius: 24%;
   box-shadow: 0 6px 14px #10284b21, inset 0 0 0 1px #ffffff50;
-  backdrop-filter: blur(14px) saturate(1.5);
-  -webkit-backdrop-filter: blur(14px) saturate(1.5);
+  backdrop-filter: blur(4px) saturate(1.08);
+  -webkit-backdrop-filter: blur(4px) saturate(1.08);
 }
 .glass-app-icon .icon-artwork { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .glass-app-icon::after { content: ''; position: absolute; inset: 1px; border-radius: inherit; box-shadow: inset 0 1px 1px #ffffff70, inset 0 -1px 1px #1233511c; pointer-events: none; }
-.glass-folder-icon { background: #ecf3ff40; border: 1px solid #ffffff8c; box-shadow: 0 5px 14px #10284b20, inset 0 1px 1px #ffffffa8; backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4); }
+.glass-folder-icon { background: #ffffff0c; border: 1px solid #ffffff8c; box-shadow: 0 5px 14px #10284b20, inset 0 1px 1px #ffffffa8; backdrop-filter: blur(6px) saturate(1.08); -webkit-backdrop-filter: blur(6px) saturate(1.08); }
 .glass-folder-icon .mini { position: relative; width: 100%; height: 100%; min-width: 0; border-radius: 4px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
-:root[data-appearance=dark] .glass-app-icon { background: #23375859; box-shadow: 0 6px 15px #0004, inset 0 0 0 1px #ffffff35; }
+:root[data-appearance=dark] .glass-app-icon { background: transparent; box-shadow: 0 6px 15px #0004, inset 0 0 0 1px #ffffff35; }
 :root[data-material=solid] .glass-app-icon { background: rgb(var(--surface)); backdrop-filter: none; -webkit-backdrop-filter: none; }
 .shortcut-preview { display: flex; gap: 18px; align-items: center; padding: 18px; border: 1px solid var(--separator); border-radius: 20px; background: var(--field-bg); }
 .shortcut-preview .app-icon { width: 76px; height: 76px; flex-shrink: 0; }
@@ -26,7 +26,7 @@
 @media (prefers-reduced-transparency:reduce), (prefers-contrast:more) {
   .glass-app-icon, :root[data-appearance=dark] .glass-app-icon, .glass-folder-icon { background: rgb(var(--surface)); backdrop-filter: none; -webkit-backdrop-filter: none; border: 1px solid var(--muted); box-shadow: none; }
 }
-@supports not (backdrop-filter:blur(1px)) { .glass-app-icon, .glass-folder-icon { background: rgb(var(--surface)); } }
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) { .glass-app-icon, .glass-folder-icon { background: rgb(var(--surface)); } }
 @media (forced-colors:active) { .glass-app-icon, .glass-folder-icon { background: Canvas; border: 1px solid CanvasText; backdrop-filter: none; } }
 
 .form-stack > label.shortcut-pin-row { flex-direction: row; align-items: center; justify-content: space-between; gap: 18px; min-height: 52px; }
@@ -44,11 +44,11 @@
 .shortcut-editor-mode .shortcut-preview .app-icon { width: 68px; height: 68px; }
 #sheet.shortcut-editor-mode .form-stack > .action-button { min-height: 44px; font-size: .875rem; border-radius: 12px; }
 
-/* Monochrome glass: the glyph, body and reflections share one neutral palette. */
-.glass-app-icon { background: #ffffff26; box-shadow: 0 6px 14px #00000021, inset 0 0 0 1px #ffffff50; backdrop-filter: blur(14px) saturate(0); -webkit-backdrop-filter: blur(14px) saturate(0); }
+/* Neutral artwork over a clear surface; wallpaper retains its color beneath the glass. */
+.glass-app-icon { background: transparent; box-shadow: 0 6px 14px #00000021, inset 0 0 0 1px #ffffff50; backdrop-filter: blur(4px) saturate(1.08); -webkit-backdrop-filter: blur(4px) saturate(1.08); }
 .glass-app-icon::after { box-shadow: inset 0 1px 1px #ffffff70, inset 0 -1px 1px #0000001c; }
-:root[data-appearance=dark] .glass-app-icon { background: #ffffff14; box-shadow: 0 6px 15px #0004, inset 0 0 0 1px #ffffff35; }
-.glass-folder-icon { background: #ffffff35; border-color: #ffffff8c; box-shadow: 0 5px 14px #0003, inset 0 1px 1px #ffffffa8; backdrop-filter: blur(16px) saturate(0); -webkit-backdrop-filter: blur(16px) saturate(0); }
+:root[data-appearance=dark] .glass-app-icon { background: transparent; box-shadow: 0 6px 15px #0004, inset 0 0 0 1px #ffffff35; }
+.glass-folder-icon { background: #ffffff0c; border-color: #ffffff8c; box-shadow: 0 5px 14px #0003, inset 0 1px 1px #ffffffa8; backdrop-filter: blur(6px) saturate(1.08); -webkit-backdrop-filter: blur(6px) saturate(1.08); }
 
 /* The saved grid cell supplies spacing; the editing frame belongs to the icon. */
 .shortcut { display: flex; align-items: center; justify-content: center; padding: 8px 0; }
@@ -139,3 +139,9 @@ body.editing #toast { bottom: calc(var(--dock-clearance) + 56px); }
   .folder-panel { background: #ededed; }
   :root[data-appearance=dark] .folder-panel { background: #2b2b2b; }
 }
+
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+  .glass-app-icon, .glass-folder-icon { background: #f2f2f2 !important; }
+  :root[data-appearance=dark] .glass-app-icon, :root[data-appearance=dark] .glass-folder-icon { background: #2b2b2b !important; }
+}
+@media (forced-colors:active) { .glass-app-icon, .glass-folder-icon { background: Canvas !important; border-color: CanvasText; } }

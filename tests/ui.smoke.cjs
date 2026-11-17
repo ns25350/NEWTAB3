@@ -580,6 +580,20 @@ async function noOverflow(page) {
     pass('Dock capacity, ordering, removal and Undo preserve explicit choices without toolbar buttons');
 
     const artwork=await open(browser);const ap=artwork.page;
+    const transmission=await ap.evaluate(async()=>{
+      const image=new Image();image.src=NewTabIcons.artwork({url:'https://gemini.google.com/',symbol:'auto'});await image.decode();
+      const canvas=document.createElement('canvas');canvas.width=canvas.height=64;const ctx=canvas.getContext('2d',{willReadFrequently:true});
+      const pixel=(x,y)=>[...ctx.getImageData(x,y,1,1).data];ctx.drawImage(image,0,0);
+      const empty=pixel(32,7),figure=pixel(32,32);
+      const over=color=>{ctx.clearRect(0,0,64,64);ctx.fillStyle=color;ctx.fillRect(0,0,64,64);ctx.drawImage(image,0,0);return{empty:pixel(32,7),figure:pixel(32,32)}};
+      return{empty,figure,blue:over('#1464dc'),red:over('#dc6414'),background:getComputedStyle(document.querySelector('#home .glass-app-icon')).backgroundColor};
+    });
+    assert(transmission.empty[3]<64,'The icon plate must let wallpaper through');
+    assert(transmission.figure[3]>128&&transmission.figure[3]<250,'The Gemini glyph must be dense translucent glass');
+    assert(transmission.figure.slice(0,3).every(v=>v<80),'The light-appearance glyph must be dark smoke glass');
+    assert(transmission.blue.empty[2]>transmission.blue.empty[0]+100&&transmission.red.empty[0]>transmission.red.empty[2]+100,'The plate must retain wallpaper color');
+    assert(transmission.blue.figure[2]>transmission.red.figure[2]+10,'Background must remain visible through the dark glyph');
+    assert.equal(transmission.background,'rgba(0, 0, 0, 0)');
     const decoded=await ap.evaluate(async()=>{
       const urls=['https://google.com','https://youtube.com','https://classroom.google.com','https://drive.google.com','https://mail.google.com','https://github.com','https://chatgpt.com','https://gemini.google.com','https://claude.ai','https://notion.so','https://wikipedia.org','https://discord.com','https://figma.com'];
       const all=[...urls.map(url=>({url,color:'#568ac4',symbol:'auto'})),...NewTabIcons.options.map(([symbol])=>({url:'https://example.org',color:'#568ac4',symbol}))];const appearance=document.documentElement.dataset.appearance;
@@ -592,7 +606,7 @@ async function noOverflow(page) {
     const accessibility=await ap.locator('#home .glass-app-icon').first().evaluate(n=>({blur:getComputedStyle(n).backdropFilter,animation:getComputedStyle(n).animationName,background:getComputedStyle(n).backgroundColor}));
     assert.equal(accessibility.blur,'none');assert.equal(accessibility.animation,'none');assert(!accessibility.background.includes('rgba'));
     assert.deepEqual(artwork.faviconRequests,[]);assert.deepEqual(artwork.errors,[]);await artwork.context.close();
-    pass('All SVG brand/symbol variants decode in light/dark; host validation, opaque contrast fallback and reduced motion work');
+    pass('SVG variants decode in light/dark; clear plates and dense glass glyphs transmit wallpaper; contrast fallback and reduced motion work');
 
     const offlineContext = await browser.newContext();
     const offlinePage = await offlineContext.newPage();
@@ -605,12 +619,12 @@ async function noOverflow(page) {
       if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
     });
     const cachedFiles = await offlinePage.evaluate(async () => {
-      const cache = await caches.open('newtab-original-shell-mono-folders-8');
+      const cache = await caches.open('newtab-original-shell-clear-glass-9');
       return (await cache.keys()).map(r => r.url);
     });
-    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261117-mono-folders-8')));
-    assert(cachedFiles.some(url => url.endsWith('icons.js?v=20261117-mono-folders-8')));
-    assert(cachedFiles.some(url => url.endsWith('icons.css?v=20261117-mono-folders-8')));
+    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261117-clear-glass-9')));
+    assert(cachedFiles.some(url => url.endsWith('icons.js?v=20261117-clear-glass-9')));
+    assert(cachedFiles.some(url => url.endsWith('icons.css?v=20261117-clear-glass-9')));
     assert.equal(await offlinePage.evaluate(async () => (await caches.keys()).includes('newtab-original-shell-2')), false);
     await offlineContext.setOffline(true);
     await offlinePage.reload({ waitUntil: 'domcontentloaded' });

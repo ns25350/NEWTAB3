@@ -163,7 +163,7 @@ CSS・JavaScriptの参照にはリリース識別子を付けています。Serv
 
 ## SVGのガラス調アイコン
 
-サイトの図柄・ガラスの背景・反射する縁を重ねたSVGとCSSで、Icon Composerを参考にした見た目をWeb上で表現しています。Google、YouTube、Classroom、Drive、Gmail、GitHub、ChatGPT、Gemini、Claudeなどの図柄を内蔵しています。その他のサイトも、編集画面から地球・本・会話などのSVG図柄を選べます。すべての図柄は明暗に合わせたモノクロで表示し、アイコンごとの色の選択は設けません。初期値はサイトに合わせた自動選択です。
+サイトの図柄・ガラスの背景・反射する縁を重ねたSVGとCSSで、Icon Composerを参考にした見た目をWeb上で表現しています。Google、YouTube、Classroom、Drive、Gmail、GitHub、ChatGPT、Gemini、Claudeなどの図柄を内蔵しています。その他のサイトも、編集画面から地球・本・会話などのSVG図柄を選べます。図柄は明暗に合わせたモノクロの濃い透過ガラス、下地は壁紙の色や模様が透けるクリアなガラスとして表示し、アイコンごとの色の選択は設けません。初期値はサイトに合わせた自動選択です。
 
 ライト・ダーク、透明度を下げる設定、コントラストを上げる設定に対応します。SVGはアプリに同梱したデータから生成し、オフラインでも表示します。AppleのIcon Composerアプリやネイティブの`.icon`形式を利用するものではありません。図柄の出典は [vendor/simple-icons/README.md](vendor/simple-icons/README.md) を参照してください。
 
