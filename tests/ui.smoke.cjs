@@ -619,12 +619,12 @@ async function noOverflow(page) {
       if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
     });
     const cachedFiles = await offlinePage.evaluate(async () => {
-      const cache = await caches.open('newtab-original-shell-clear-glass-9');
+      const cache = await caches.open('newtab-original-shell-wallpaper-10');
       return (await cache.keys()).map(r => r.url);
     });
-    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261117-clear-glass-9')));
-    assert(cachedFiles.some(url => url.endsWith('icons.js?v=20261117-clear-glass-9')));
-    assert(cachedFiles.some(url => url.endsWith('icons.css?v=20261117-clear-glass-9')));
+    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261117-wallpaper-10')));
+    assert(cachedFiles.some(url => url.endsWith('icons.js?v=20261117-wallpaper-10')));
+    assert(cachedFiles.some(url => url.endsWith('icons.css?v=20261117-wallpaper-10')));
     assert.equal(await offlinePage.evaluate(async () => (await caches.keys()).includes('newtab-original-shell-2')), false);
     await offlineContext.setOffline(true);
     await offlinePage.reload({ waitUntil: 'domcontentloaded' });

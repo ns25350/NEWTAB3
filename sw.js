@@ -1,7 +1,7 @@
 /* Only the local application shell is cached. External API calls remain uncached. */
 'use strict';
-const CACHE='newtab-original-shell-clear-glass-9';
-const RELEASE='20261117-clear-glass-9';
+const CACHE='newtab-original-shell-wallpaper-10';
+const RELEASE='20261117-wallpaper-10';
 const SHELL=['./','./index.html',...['style.css','features.css','settings.css','glass.css','drawer.js','core.js','icons.js','icons.css','app.js'].map(path=>'./'+path+'?v='+RELEASE),'./icon.svg','./assets/landscape.svg','./assets/landscape-dark.svg','./assets/wallpaper.png','./vendor/cupertino-pane/cupertino-pane.min.js?v=1.5.4'];
 const shellPaths=new Set(SHELL.map(path=>new URL(path,self.location.href).pathname));
 self.addEventListener('install',event=>{

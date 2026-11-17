@@ -14,6 +14,8 @@ const uid=()=>globalThis.crypto?.randomUUID?.()||('id-'+Date.now().toString(36)+
 const clamp=(n,a,b,d=a)=>Number.isFinite(Number(n))?Math.max(a,Math.min(b,Number(n))):d;
 const str=(v,d='',n=100)=>typeof v==='string'?v.slice(0,n):d;
 const color=(v,d='#1870db')=>/^#[0-9a-f]{6}$/i.test(v)?v:d;
+// Wallpaper palette selection uses the original weighted RGB brightness.
+function luminance(hex){const rgb=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255);return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722}
 function url(v){try{const u=new URL(v);return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password?u.href:null}catch{return null}}
 function cleanDock(ids,shortcuts){const valid=new Set(shortcuts.map(s=>s.id));return [...new Set((Array.isArray(ids)?ids:[]).filter(id=>typeof id==='string'&&valid.has(id)))].slice(0,MAX_DOCK)}
 function defaults(){
@@ -69,5 +71,5 @@ function normalize(raw){
  d.layouts=(Array.isArray(o.layouts)?o.layouts:[]).slice(0,20).map(l=>{const seen=new Set();return{id:str(l.id,uid()),name:str(l.name,'配置',40),widgets:Object.fromEntries(WIDGETS.map(k=>[k,{enabled:l.widgets?.[k]?.enabled??d.widgets[k].enabled,style:d.widgets[k].style}])),grid:{columns:Math.round(clamp(l.grid?.columns,6,16,12)),rowHeight:clamp(l.grid?.rowHeight,40,120,60),gap:clamp(l.grid?.gap,8,40,20)},pages:(Array.isArray(l.pages)?l.pages:[]).slice(0,6).map(p=>({id:str(p.id,uid()),name:str(p.name,'ページ',40),items:cleanItems(p.items,seen)}))}}).filter(l=>l.pages.length);
  return d;
 }
-root.NewTabCore={VERSION,KEY,WIDGETS,SHORTCUT_SYMBOLS,MAX_DOCK,cleanDock,LABELS,ENGINES,TIMES,CLASSES,clone,uid,clamp,str,color,url,defaults,overlaps,canPlace,freeSpot,pack,minimumRows,displayItems,restoreColumns,minutes,validTimes,lessonStatus,dayOffset,queryTarget,weatherHourIndex,migrate,normalize};
+root.NewTabCore={VERSION,KEY,WIDGETS,SHORTCUT_SYMBOLS,MAX_DOCK,cleanDock,LABELS,ENGINES,TIMES,CLASSES,clone,uid,clamp,str,color,luminance,url,defaults,overlaps,canPlace,freeSpot,pack,minimumRows,displayItems,restoreColumns,minutes,validTimes,lessonStatus,dayOffset,queryTarget,weatherHourIndex,migrate,normalize};
 })(typeof window==='undefined'?globalThis:window);

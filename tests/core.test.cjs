@@ -47,4 +47,7 @@ test('Dock pruning and capacity preserve only explicitly selected sites',()=>{
 test('SVG symbol choices migrate safely and cannot introduce custom markup',()=>{
  const d=C.defaults();d.shortcuts[0].symbol='star';d.shortcuts[1].symbol='<svg onload=alert(1)>';const loaded=C.normalize(d);assert.equal(loaded.shortcuts[0].symbol,'star');assert.equal(loaded.shortcuts[1].symbol,'auto');assert.equal(C.normalize({version:4}).shortcuts[0].symbol,'auto');
 });
+test('Wallpaper brightness remains available and distinguishes dark, light and green images',()=>{
+ assert.equal(C.luminance('#000000'),0);assert.equal(C.luminance('#ffffff'),1);assert.equal(C.luminance('#00ff00'),.7152);assert(C.luminance('#171717')<.35);assert(C.luminance('#f0f0f0')>.72);
+});
 console.log(`${checks} checks passed.`);
