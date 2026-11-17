@@ -28,7 +28,8 @@ const timetable = { schedules: Object.fromEntries(['日曜','月曜','火曜','�
 async function open(browser, options = {}, fail = false) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, timezoneId: 'Asia/Tokyo', ...options });
   const page = await context.newPage();
-  const errors = [];
+  const errors = [], faviconRequests = [];
+  page.on('request', request => { if (/favicons|favicon\.ico|\/s2\//.test(request.url())) faviconRequests.push(request.url()); });
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/*', async route => {
     const url = new URL(route.request().url());
@@ -42,8 +43,14 @@ async function open(browser, options = {}, fail = false) {
   await page.goto(baseURL, { waitUntil: 'domcontentloaded' });
   await page.locator('#search-input').waitFor();
   assert.equal(await page.locator('.status-bar, .welcome, #greeting').count(), 0);
-  return { context, page, errors };
+  assert.equal(await page.locator('#edit, #undo, #settings, .dock-tools, .dock-action').count(), 0);
+  return { context, page, errors, faviconRequests };
 }
+async function isEditing(page) { return page.locator('body').evaluate(n => n.classList.contains('editing')); }
+async function toggleEditing(page) { await page.locator('#home').focus(); await page.keyboard.press('Control+e'); }
+async function openSettingsKeyboard(page) { await page.locator('#home').focus(); await page.keyboard.press('Control+,'); }
+async function undoKeyboard(page) { await page.locator('#home').focus(); await page.keyboard.press('Control+z'); }
+async function homeMenuKeyboard(page) { await page.locator('#home').focus(); await page.keyboard.press('Shift+F10'); await page.locator('#sheet.home-menu-mode[data-pane-ready=true]').waitFor(); }
 async function noOverflow(page) {
   const result = await page.evaluate(() => {
     const main = document.querySelector('#home').getBoundingClientRect();
@@ -70,9 +77,9 @@ async function noOverflow(page) {
     pass('Desktop: weather and seven lessons render from fixture responses without overlapping cards');
     const homeBoxes = () => page.locator('#home .item').evaluateAll(nodes => nodes.map(n => ({ id: n.dataset.key, ...n.getBoundingClientRect().toJSON() })));
     const originalBoxes = await homeBoxes();
-    await page.locator('#edit').click();
+    await toggleEditing(page);
     assert.deepEqual(await homeBoxes(), originalBoxes);
-    await page.locator('#edit').click();
+    await toggleEditing(page);
     assert.deepEqual(await homeBoxes(), originalBoxes);
     pass('All default widgets and shortcuts keep identical positions and dimensions when editing starts and ends');
 
@@ -98,7 +105,8 @@ async function noOverflow(page) {
     await page.keyboard.press('Escape');
     pass('Dialogs: five-day forecast, settings shortcut, nested settings and dismissal');
 
-    await page.locator('#dock .dock-action').first().click();
+    await homeMenuKeyboard(page);
+    await page.getByRole('button', {name:'ショートカットを追加',exact:true}).click();
     await page.locator('.form-stack input[type=text]').fill('Design reference');
     await page.locator('.form-stack input[type=url]').fill('https://example.com/design');
     await page.locator('.form-stack button[type=submit]').click();
@@ -106,17 +114,17 @@ async function noOverflow(page) {
     assert.equal(await page.locator('.shortcut a[aria-label="Design reference"]').count(), 1);
     pass('Shortcut creation survives reload');
 
-    await page.locator('#edit').click();
-    assert.equal(await page.locator('#edit').getAttribute('aria-pressed'), 'true');
+    await toggleEditing(page);
+    assert.equal(String(await isEditing(page)), 'true');
     await page.locator('[data-key=clock]').click();
     await page.locator('[data-key=clock] .configure').click();
     await page.getByRole('spinbutton', { name: '高さ', exact: true }).fill('2');
     await page.getByRole('button', { name: '配置を変更', exact: true }).click();
     await page.keyboard.press('Escape');
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('newtab.original.v4')).pages[0].items.find(i => i.id === 'clock').h), 2);
-    await page.locator('#undo').click();
+    await undoKeyboard(page);
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('newtab.original.v4')).pages[0].items.find(i => i.id === 'clock').h), 3);
-    await page.locator('#edit').click();
+    await toggleEditing(page);
     pass('Edit: keyboard layout change and undo preserve saved layout');
 
     await page.locator('#page-nav button').nth(1).click();
@@ -150,7 +158,7 @@ async function noOverflow(page) {
         assert.equal(await run.page.locator('#sheet[open] .day-forecast').count(), 5);
         await run.page.keyboard.press('Escape');
       }
-      await run.page.locator('#settings').click();
+      await openSettingsKeyboard(run.page);
       await run.page.locator('#sheet[open]').waitFor();
       assert.equal(await run.page.locator('#sheet').evaluate(n => n.scrollWidth <= n.clientWidth + 1), true);
       assert.deepEqual(run.errors, []);
@@ -166,7 +174,7 @@ async function noOverflow(page) {
       await large.page.waitForFunction(() => parseFloat(document.documentElement.style.getPropertyValue('--row')) > 120);
       await noOverflow(large.page);
       assert.deepEqual(await large.page.locator('.widget-content').evaluateAll(nodes => nodes.filter(n => n.scrollHeight > n.clientHeight + 2).map(n => n.dataset.widget)), []);
-      await large.page.locator('#settings').click();
+      await openSettingsKeyboard(large.page);
       assert.equal(await large.page.locator('#sheet').evaluate(n => n.scrollWidth <= n.clientWidth + 1), true);
       await large.context.close();
     }
@@ -174,7 +182,7 @@ async function noOverflow(page) {
 
     const settings = await open(browser);
     const sp = settings.page;
-    await sp.locator('#settings').click();
+    await openSettingsKeyboard(sp);
     await sp.locator('#settings-filter').fill('授業');
     assert.equal(await sp.locator('#settings-nav button').count(), 1);
     await sp.locator('#settings-nav button').click();
@@ -189,7 +197,7 @@ async function noOverflow(page) {
     await sp.getByRole('switch', { name: '時計を表示', exact: true }).uncheck();
     assert.equal(await sp.locator('[data-key=clock]').count(), 0);
     await sp.reload({ waitUntil: 'domcontentloaded' });
-    await sp.locator('#settings').click();
+    await openSettingsKeyboard(sp);
     await sp.locator('#settings-nav button[data-section=widgets]').click();
     assert.equal(await sp.getByRole('switch', { name: '時計を表示', exact: true }).isChecked(), false);
     await sp.getByRole('switch', { name: '時計を表示', exact: true }).check();
@@ -212,7 +220,7 @@ async function noOverflow(page) {
     for (const width of [320, 1440]) {
       const panes = await open(browser, { viewport: { width, height: 844 }, colorScheme: 'dark' });
       for (const key of ['appearance','grid','pages','shortcuts','widgets','clock','timetable','weather','search','gallery','data']) {
-        await panes.page.locator('#settings').click();
+        await openSettingsKeyboard(panes.page);
         if (width < 700) await panes.page.locator('.settings-menu button[data-section=' + key + ']').click();
         else await panes.page.locator('#settings-nav button[data-section=' + key + ']').click();
         assert.equal(await panes.page.locator('#sheet-body').evaluate(n => n.scrollWidth <= n.clientWidth + 1), true, key + ' must fit at ' + width);
@@ -224,7 +232,7 @@ async function noOverflow(page) {
     pass('All eleven settings panes render without horizontal overflow at 320 and 1440px');
 
     const mobileSettings = await open(browser, { viewport: { width: 390, height: 844 } });
-    await mobileSettings.page.locator('#settings').click();
+    await openSettingsKeyboard(mobileSettings.page);
     assert.equal(await mobileSettings.page.locator('.settings-index').count(), 1);
     await mobileSettings.page.getByRole('button', { name: '壁紙と外観', exact: true }).click();
     assert.equal(await mobileSettings.page.locator('#sheet-title').textContent(), '壁紙と外観');
@@ -238,14 +246,14 @@ async function noOverflow(page) {
     pass('Compact settings: grouped list, search, detail navigation and Back');
 
     const material = await open(browser);
-    await material.page.locator('#settings').click();
+    await openSettingsKeyboard(material.page);
     await material.page.locator('#sheet[data-pane-ready=true]').waitFor();
     await material.page.getByRole('radio', { name: '不透明', exact: true }).click();
     assert.equal(await material.page.locator('html').getAttribute('data-material'), 'solid');
     assert.equal(await material.page.locator('.dock-surface').evaluate(n => getComputedStyle(n).backdropFilter), 'none');
     await material.page.reload({ waitUntil: 'domcontentloaded' });
     assert.equal(await material.page.locator('html').getAttribute('data-material'), 'solid');
-    await material.page.locator('#settings').click();
+    await openSettingsKeyboard(material.page);
     await material.page.getByRole('radio', { name: 'Liquid Glass', exact: true }).click();
     assert.equal(await material.page.locator('html').getAttribute('data-material'), 'glass');
     assert.notEqual(await material.page.locator('.widget').first().evaluate(n => getComputedStyle(n, '::before').backdropFilter), 'none');
@@ -259,7 +267,7 @@ async function noOverflow(page) {
     for (const touch of [false, true]) {
       const drawer = await open(browser, { viewport: { width: 390, height: 844 }, hasTouch: touch });
       const dp = drawer.page;
-      await dp.locator('#settings').click();
+      await openSettingsKeyboard(dp);
       await dp.locator('#sheet[data-pane-ready=true]').waitFor();
       const top = await dp.locator('.newtab-pane .pane').evaluate(n => n.getBoundingClientRect().top);
       await dp.locator('#sheet-grabber').press('ArrowDown');
@@ -288,11 +296,11 @@ async function noOverflow(page) {
       }
       await dp.locator('#sheet').waitFor({ state: 'hidden' });
       assert.equal(await dp.locator('.newtab-pane').count(), 0);
-      await dp.locator('#settings').click();
+      await openSettingsKeyboard(dp);
       await dp.locator('#sheet[data-pane-ready=true]').waitFor();
       await dp.keyboard.press('Escape');
       await dp.locator('#sheet').waitFor({ state: 'hidden' });
-      assert.equal(await dp.locator('#settings').evaluate(n => n === document.activeElement), true);
+      assert.equal(await dp.locator('#home').evaluate(n => n === document.activeElement), true);
       assert.deepEqual(drawer.errors, []);
       await drawer.context.close();
     }
@@ -316,7 +324,7 @@ async function noOverflow(page) {
         return box.bottom < footer.top && n.contains(hit);
       });
       assert.equal(reachable, true, 'Bottom grid items must scroll above the floating Dock');
-      await canvas.page.locator('#settings').click();
+      await openSettingsKeyboard(canvas.page);
       await canvas.page.locator('#sheet[data-pane-ready=true]').waitFor();
       assert.deepEqual(canvas.errors, []);
       await canvas.context.close();
@@ -346,8 +354,8 @@ async function noOverflow(page) {
         const before = await boxes();
         const saved = await lp.evaluate(() => localStorage.getItem(NewTabCore.KEY));
         for (const edit of [true, false]) {
-          await lp.locator('#edit').click();
-          assert.equal(await lp.locator('#edit').getAttribute('aria-pressed'), String(edit));
+          await toggleEditing(lp);
+          assert.equal(String(await isEditing(lp)), String(edit));
           assert.deepEqual(await boxes(), before, 'Editing must not move or stretch grid items');
           const text = await lp.locator('#home .app-label').evaluateAll(nodes => nodes.map(n => {
             const r = n.getBoundingClientRect(), tile = n.closest('.item').getBoundingClientRect();
@@ -395,7 +403,7 @@ async function noOverflow(page) {
       if (touch) await ep.locator('[data-key="s:google"] a').tap();
       else await ep.locator('[data-key="s:google"] a').click();
       assert.equal(await ep.evaluate(() => window.normalTap), true, 'An ordinary tap must retain link behavior');
-      assert.equal(await ep.locator('#edit').getAttribute('aria-pressed'), 'false');
+      assert.equal(String(await isEditing(ep)), 'false');
       const cdp = touch ? await editor.context.newCDPSession(ep) : null;
       const down = async (x, y) => {
         if (touch) await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
@@ -414,7 +422,7 @@ async function noOverflow(page) {
         for (let i = 1; i <= 5; i++) { await move(190, 480 - i * 40); await ep.waitForTimeout(20); }
         await up();
         await ep.waitForTimeout(150);
-        assert.equal(await ep.locator('#edit').getAttribute('aria-pressed'), 'false', 'A normal scroll must not enter editing');
+        assert.equal(String(await isEditing(ep)), 'false', 'A normal scroll must not enter editing');
         assert(await ep.locator('#home').evaluate(n => n.scrollTop > 0), 'Normal touch scrolling must remain available');
         await ep.locator('#home').evaluate(n => n.scrollTop = 0);
       }
@@ -424,7 +432,7 @@ async function noOverflow(page) {
       const x = original.x + original.width / 2, y = original.y + original.height / 2;
       await down(x, y);
       await ep.waitForTimeout(1150);
-      assert.equal(await ep.locator('#edit').getAttribute('aria-pressed'), 'true');
+      assert.equal(String(await isEditing(ep)), 'true');
       assert.equal(await ep.locator('.drag-preview').count(), 1);
       const previewBox = await ep.locator('.drag-preview').boundingBox();
       assert(Math.abs(previewBox.width - original.width) < 1 && Math.abs(previewBox.height - original.height) < 1);
@@ -443,7 +451,7 @@ async function noOverflow(page) {
       const resized = await ep.locator('.ghost').boundingBox();
       await up();
       assert(Math.abs((await clock.boundingBox()).height - resized.height) < 1);
-      await ep.locator('#undo').click();
+      await undoKeyboard(ep);
       assert(Math.abs((await clock.boundingBox()).height - original.height) < 1);
       const saved = await ep.evaluate(() => localStorage.getItem(NewTabCore.KEY));
       dropped = await clock.boundingBox();
@@ -460,7 +468,7 @@ async function noOverflow(page) {
       await ep.keyboard.press('Escape');
       await ep.locator('#sheet').waitFor({ state: 'hidden' });
       const edited = await clock.boundingBox();
-      await ep.locator('#edit').click();
+      await toggleEditing(ep);
       assert.deepEqual(await clock.boundingBox(), edited);
       await ep.reload({ waitUntil: 'domcontentloaded' });
       assert.deepEqual(await clock.boundingBox(), edited, 'Reload must preserve the displayed drop position');
@@ -469,6 +477,129 @@ async function noOverflow(page) {
       await editor.context.close();
     }
     pass('Mouse and touch: normal tap, long-press direct drag, accurate drop/resize, undo, collision rejection, keyboard alternative and reload');
+
+    for (const [width, height, touch] of [[1440,1000,false],[932,430,true],[844,390,true],[740,360,true],[390,844,true]]) {
+      const launcher = await open(browser, { viewport: { width, height }, hasTouch: touch, isMobile: touch });
+      const lp = launcher.page;
+      assert.equal(await lp.locator('#dock a').count(), 0);
+      assert.equal(await lp.locator('.dock-surface').isVisible(), false);
+      await lp.evaluate(() => {
+        const s=NewTabCore.defaults();Object.values(s.widgets).forEach(w=>w.enabled=false);
+        s.pages=[{id:'sites',name:'ホーム',items:s.shortcuts.map((v,i)=>({id:'s:'+v.id,x:(i%4)*2,y:Math.floor(i/4)*2,w:2,h:2}))}];s.activePage='sites';localStorage.setItem(NewTabCore.KEY,JSON.stringify(s));
+      });
+      await lp.reload({waitUntil:'domcontentloaded'});
+      const source=lp.locator('[data-key="s:google"]');
+      const box=await source.boundingBox(), x=box.x+box.width/2, y=box.y+box.height/2;
+      const cdp=touch?await launcher.context.newCDPSession(lp):null;
+      if(touch) await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
+      else {await lp.mouse.move(x,y);await lp.mouse.down();}
+      await lp.waitForTimeout(1100);
+      assert.equal(await isEditing(lp),true);
+      if(touch) await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});else await lp.mouse.up();
+      await lp.locator('#sheet.home-menu-mode[data-pane-ready=true]').waitFor();
+      assert.equal(await lp.getByRole('button',{name:'Dockに追加',exact:true}).count(),1);
+      await lp.getByRole('button',{name:'Dockに追加',exact:true}).click();
+      assert.equal(await lp.locator('#dock a').count(),1);
+      assert.deepEqual(await lp.evaluate(()=>JSON.parse(localStorage.getItem(NewTabCore.KEY)).dock),['google']);
+      assert.equal(await lp.locator('#home .shortcut').count(),6);
+      // A blank tap finishes editing; no fixed Done or toolbar buttons are introduced.
+      const blank=await source.evaluate(n=>{const r=n.getBoundingClientRect(),gap=parseFloat(getComputedStyle(n.parentElement).columnGap);return{x:r.right+gap/2,y:r.top+r.height/2}});
+      if(touch) await lp.touchscreen.tap(blank.x,blank.y);else await lp.mouse.click(blank.x,blank.y);
+      assert.equal(await isEditing(lp),false);
+      await lp.reload({waitUntil:'domcontentloaded'});
+      assert.equal(await lp.locator('#dock a').count(),1);
+      const dockIcon=await lp.locator('#dock a').boundingBox();
+      const dx=dockIcon.x+dockIcon.width/2,dy=dockIcon.y+dockIcon.height/2;
+      if(touch) await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:dx,y:dy}]});
+      else{await lp.mouse.move(dx,dy);await lp.mouse.down();}
+      await lp.waitForTimeout(550);
+      if(touch) await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});else await lp.mouse.up();
+      await lp.locator('#sheet.home-menu-mode[data-pane-ready=true]').waitFor();
+      await lp.getByRole('button',{name:'Dockから取り除く',exact:true}).click();
+      assert.equal(await lp.locator('#dock a').count(),0);
+      assert.equal(await lp.locator('#home .shortcut').count(),6);
+      await homeMenuKeyboard(lp);
+      await lp.getByRole('button',{name:'ショートカットを追加',exact:true}).click();
+      await lp.locator('input[name=name]').fill('資料とノート');
+      await lp.locator('input[name=url]').fill('https://example.com/notes');
+      await lp.locator('select[name=symbol]').selectOption('book');
+      await lp.locator('input[name=color]').fill('#4b87b6');
+      assert.equal(await lp.locator('.shortcut-preview .glass-app-icon').getAttribute('data-artwork'),'book');
+      assert.equal(await lp.locator('input[name=dock]').isChecked(),false);
+      await lp.locator('.form-stack button[type=submit]').click();
+      await lp.reload({waitUntil:'domcontentloaded'});
+      assert.equal(await lp.locator('#dock a').count(),0,'New home shortcuts must never auto-pin');
+      assert.equal(await lp.locator('a[aria-label="資料とノート"] .glass-app-icon').getAttribute('data-artwork'),'book');
+      await lp.waitForFunction(()=>[...document.querySelectorAll('#home .glass-app-icon img')].every(n=>n.complete&&n.naturalWidth>0));
+      const images=await lp.locator('#home .glass-app-icon img').evaluateAll(nodes=>nodes.map(n=>({svg:n.src.startsWith('data:image/svg+xml'),decoded:n.complete&&n.naturalWidth>0})));
+      assert(images.every(i=>i.svg&&i.decoded));assert.deepEqual(launcher.faviconRequests,[]);
+      await noOverflow(lp);assert.deepEqual(launcher.errors,[]);
+      if(width===1440)await lp.screenshot({path:'/tmp/newtab-liquid-app-icons.png'});
+      await launcher.context.close();
+    }
+    pass('Button-free launcher: mouse/touch long-press menus, blank-tap finish, explicit Dock pins/removal, SVG chooser and no favicon requests');
+
+    for(const touch of [false,true]){
+      const pin=await open(browser,{viewport:{width:touch?390:1440,height:900},hasTouch:touch,isMobile:touch});const pp=pin.page;
+      await toggleEditing(pp);
+      const tile=pp.locator('[data-key="s:google"]');await tile.evaluate(n=>n.scrollIntoView({block:'center'}));
+      const b=await tile.boundingBox(),dock=await pp.locator('.dock-surface').boundingBox();
+      const start={x:b.x+b.width/2,y:b.y+b.height/2},end={x:dock.x+dock.width/2,y:dock.y+dock.height/2};
+      const cdp=touch?await pin.context.newCDPSession(pp):null;
+      if(touch)await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[start]});else{await pp.mouse.move(start.x,start.y);await pp.mouse.down();}
+      if(touch)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[end]});else await pp.mouse.move(end.x,end.y,{steps:10});
+      assert.equal(await pp.locator('.dock-surface.drop-target').count(),1);
+      if(touch)await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});else await pp.mouse.up();
+      assert.deepEqual(await pp.evaluate(()=>JSON.parse(localStorage.getItem(NewTabCore.KEY)).dock),['google']);
+      await undoKeyboard(pp);assert.equal(await pp.locator('#dock a').count(),0);
+      assert.equal(await pp.locator('#home [data-key="s:google"]').count(),1);
+      assert.deepEqual(pin.errors,[]);await pin.context.close();
+    }
+    pass('Mouse and touch: dragging a home icon to the Dock pins it explicitly, keeps home placement and supports Undo');
+
+    const dockSettings=await open(browser);const ds=dockSettings.page;
+    await ds.evaluate(()=>{const s=NewTabCore.defaults();s.shortcuts.push(...Array.from({length:3},(_,i)=>({id:'extra'+i,name:'Extra '+i,url:'https://example.com/'+i,color:'#3c71a2'})));s.dock=s.shortcuts.slice(0,8).map(s=>s.id);localStorage.setItem(NewTabCore.KEY,JSON.stringify(s))});
+    await ds.reload({waitUntil:'domcontentloaded'});await ds.locator('[data-key="s:extra2"]').click({button:'right'});
+    await ds.getByRole('button',{name:'Dockに追加',exact:true}).click();
+    assert.equal(await ds.locator('#dock a').count(),8);
+    assert.match(await ds.locator('#toast').textContent(),/8件/);
+    await ds.locator('[data-key="s:extra2"]').click({button:'right'});
+    await ds.getByRole('button',{name:'ショートカットを編集',exact:true}).click();
+    const toggleSize=await ds.locator('input[name=dock]').boundingBox();assert(toggleSize.width===48&&toggleSize.height===28);
+    await ds.locator('input[name=dock]').check();await ds.locator('.form-stack button[type=submit]').click();
+    assert.match(await ds.locator('.form-stack [role=alert]').textContent(),/8件/);assert.equal(await ds.locator('#dock a').count(),8);
+    await ds.keyboard.press('Escape');
+    await openSettingsKeyboard(ds);await ds.locator('[data-section=shortcuts]').click();
+    await ds.getByRole('button',{name:'Googleを後ろへ',exact:true}).click();
+    assert.deepEqual(await ds.evaluate(()=>JSON.parse(localStorage.getItem(NewTabCore.KEY)).dock.slice(0,2)),['youtube','google']);
+    await ds.getByRole('button',{name:'YouTubeをDockから取り除く',exact:true}).click();
+    assert.equal(await ds.locator('#dock a').count(),7);
+    await ds.locator('.shortcut-setting').filter({hasText:'Extra 2'}).click();await ds.locator('input[name=dock]').check();await ds.locator('.form-stack button[type=submit]').click();
+    assert.equal(await ds.locator('#dock a').count(),8);assert.equal(await ds.evaluate(()=>JSON.parse(localStorage.getItem(NewTabCore.KEY)).dock.at(-1)),'extra2');
+    await undoKeyboard(ds);assert.equal(await ds.locator('#dock a').count(),7);await undoKeyboard(ds);
+    assert.equal(await ds.locator('#dock a').count(),8);
+    assert.equal(await ds.locator('#edit,#settings,#undo,.dock-tools,.dock-action').count(),0);
+    await ds.setViewportSize({width:320,height:568});await ds.waitForTimeout(220);await noOverflow(ds);
+    assert((await ds.locator('.dock-surface').boundingBox()).width<=288);
+    await ds.locator('#dock a').last().evaluate(n=>n.scrollIntoView({inline:'end',block:'nearest'}));
+    const dockLast=await ds.locator('#dock a').last().boundingBox();assert(dockLast.x>=0&&dockLast.x+dockLast.width<=320);
+    assert.deepEqual(dockSettings.errors,[]);await dockSettings.context.close();
+    pass('Dock capacity, ordering, removal and Undo preserve explicit choices without toolbar buttons');
+
+    const artwork=await open(browser);const ap=artwork.page;
+    const decoded=await ap.evaluate(async()=>{
+      const urls=['https://google.com','https://youtube.com','https://classroom.google.com','https://drive.google.com','https://mail.google.com','https://github.com','https://chatgpt.com','https://gemini.google.com','https://claude.ai','https://notion.so','https://wikipedia.org','https://discord.com','https://figma.com'];
+      const all=[...urls.map(url=>({url,color:'#568ac4',symbol:'auto'})),...NewTabIcons.options.map(([symbol])=>({url:'https://example.org',color:'#568ac4',symbol}))];const appearance=document.documentElement.dataset.appearance;
+      for(const dark of ['light','dark']){document.documentElement.dataset.appearance=dark;for(const shortcut of all){const src=NewTabIcons.artwork(shortcut),svg=decodeURIComponent(src.split(',')[1]);if(!svg.includes('<svg')||/<script|<foreignObject|<image|onload=/.test(svg))throw Error('Unsafe SVG');const image=new Image();image.src=src;await image.decode()}}
+      document.documentElement.dataset.appearance=appearance;NewTabIcons.refresh();return all.length*2;
+    });
+    assert.equal(decoded,48);
+    assert.equal(await ap.evaluate(()=>NewTabIcons.resolve({url:'https://google.com.evil.example'})),'globe');
+    await ap.emulateMedia({colorScheme:'dark',reducedMotion:'reduce',contrast:'more'});await toggleEditing(ap);
+    const accessibility=await ap.locator('#home .glass-app-icon').first().evaluate(n=>({blur:getComputedStyle(n).backdropFilter,animation:getComputedStyle(n).animationName,background:getComputedStyle(n).backgroundColor}));
+    assert.equal(accessibility.blur,'none');assert.equal(accessibility.animation,'none');assert(!accessibility.background.includes('rgba'));
+    assert.deepEqual(artwork.faviconRequests,[]);assert.deepEqual(artwork.errors,[]);await artwork.context.close();
+    pass('All SVG brand/symbol variants decode in light/dark; host validation, opaque contrast fallback and reduced motion work');
 
     const offlineContext = await browser.newContext();
     const offlinePage = await offlineContext.newPage();
@@ -481,17 +612,20 @@ async function noOverflow(page) {
       if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
     });
     const cachedFiles = await offlinePage.evaluate(async () => {
-      const cache = await caches.open('newtab-original-shell-edit-6');
+      const cache = await caches.open('newtab-original-shell-glass-dock-7');
       return (await cache.keys()).map(r => r.url);
     });
-    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261016-edit-6')));
+    assert(cachedFiles.some(url => url.endsWith('settings.css?v=20261117-glass-dock-7')));
+    assert(cachedFiles.some(url => url.endsWith('icons.js?v=20261117-glass-dock-7')));
+    assert(cachedFiles.some(url => url.endsWith('icons.css?v=20261117-glass-dock-7')));
     assert.equal(await offlinePage.evaluate(async () => (await caches.keys()).includes('newtab-original-shell-2')), false);
     await offlineContext.setOffline(true);
     await offlinePage.reload({ waitUntil: 'domcontentloaded' });
-    await offlinePage.locator('#settings').click();
+    await openSettingsKeyboard(offlinePage);
     await offlinePage.locator('#sheet[data-pane-ready=true]').waitFor();
     assert.equal(await offlinePage.locator('#settings-sidebar').isVisible(), true);
     assert.equal(await offlinePage.locator('#sheet .pane').evaluate(n => getComputedStyle(n).width), '980px');
+    assert.equal(await offlinePage.locator('#home .glass-app-icon img').first().evaluate(n=>n.complete&&n.naturalWidth>0),true);
     await offlineContext.close();
     pass('Old shell cache is removed; versioned settings assets work after an offline reload');
 
@@ -500,7 +634,7 @@ async function noOverflow(page) {
     assert.equal(await failure.page.getByText('予定を取得できませんでした', { exact: true }).count(), 1);
     assert.equal(await failure.page.locator('.widget .empty-message button').count(), 2);
     assert.equal(await failure.page.locator('.temperature').count(), 0);
-    await failure.page.locator('#settings').click();
+    await openSettingsKeyboard(failure.page);
     assert.equal(await failure.page.locator('#sheet[open]').count(), 1);
     assert.deepEqual(failure.errors, []);
     await failure.context.close();

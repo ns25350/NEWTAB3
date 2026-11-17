@@ -4,12 +4,6 @@
 #home .grid { min-height: calc(100dvh - var(--home-top)); }
 .dock-surface { display: flex; align-items: center; gap: 12px; padding: 13px 15px; border-radius: 30px; border: 1px solid var(--card-border); background: var(--control-fill); box-shadow: 0 12px 40px #0a23442b, inset 0 1px 1px #ffffff80; backdrop-filter: blur(var(--blur)) saturate(1.4); -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4); pointer-events: auto; --label: var(--home-ink,var(--ink)); }
 #dock { border: 0; background: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; padding: 0; gap: 12px; }
-.dock-tools { display: flex; align-items: center; gap: 6px; border-left: 1px solid var(--separator); padding-left: 12px; color: var(--ink); }
-.dock-tools .round { width: 44px; height: 44px; min-height: 44px; font-size: .875rem; border-radius: 15px; }
-.dock-tools .round > span { display: none; }
-.dock-tools .round > svg { width: 23px; height: 23px; stroke-width: 1.7; }
-.dock-tools .round:hover { background: #7f9bb51f; }
-.dock-tools #edit[aria-pressed=true] { color: #fff; background: var(--accent); box-shadow: 0 3px 9px #183a511c; }
 #page-nav { color: var(--home-ink,var(--ink)); }
 #sheet-content { height: 100%; min-height: 0; }
 #sheet-content > .settings-frame { height: calc(100% - 28px); }
@@ -60,11 +54,6 @@
   #home .page { padding-inline: max(16px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-right)); }
   .dock-surface { padding: 10px; gap: 4px; border-radius: 26px; }
   #dock { gap: 4px; }
-  .dock-tools { padding-left: 4px; gap: 4px; }
-  .dock-tools .round { border-radius: 13px; }
-}
-@media (max-width:499px) {
-  .dock-surface:has(#undo:not([hidden])) #dock > .app-tile:nth-of-type(3) { display: none; }
 }
 @media (max-width:699px) {
   #sheet.pane-host .pane { width: 100%; max-width: none; border-radius: 27px 27px 0 0; border-bottom: 0; }
@@ -98,4 +87,42 @@
 :root[data-material=solid] .item[data-key=search]::before { background: rgb(var(--surface)); backdrop-filter: none; -webkit-backdrop-filter: none; }
 @media (prefers-reduced-transparency:reduce), (prefers-contrast:more) {
   #sheet.pane-host::backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* The Dock contains only the user's explicitly pinned sites. */
+.dock-surface { max-width: calc(100vw - 32px); padding: 12px; border-radius: 28px; }
+#dock { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x; max-width: 100%; scrollbar-width: thin; gap: 12px; padding: 2px; }
+#dock > .app-tile { flex: 0 0 auto; min-width: 50px; }
+#dock .app-label { display: none; }
+#dock a:focus-visible { outline-offset: -2px; }
+.dock-empty-target { display: flex; align-items: center; justify-content: center; width: 164px; height: 50px; border-radius: 17px; border: 1px dashed var(--home-muted,var(--muted)); color: var(--home-muted,var(--muted)); }
+.dock-empty-target svg { width: 26px; height: 26px; opacity: .55; }
+.empty-dock { background: #f5f8ff26 !important; box-shadow: inset 0 1px 1px #ffffff70; }
+.dock-surface.drop-target { outline: 2px solid var(--accent); outline-offset: 4px; background: #e5fff1b8 !important; }
+.dock-surface.drop-full { outline-color: #b12030; background: #ffe4e6ed !important; }
+.editing #dock .glass-app-icon { animation: edit-wiggle calc(400ms / max(.01,var(--motion))) ease-in-out infinite alternate; }
+.motion-off .editing #dock .glass-app-icon { animation: none; }
+#edit-guide { max-width: min(90vw,540px); line-height: 1.5; }
+.empty-page { text-align: center; background: transparent; border: 0; font-size: .875rem; opacity: .75; }
+#sheet.home-menu-mode.pane-host .pane { max-width: 410px; }
+.home-menu-mode #sheet-body { padding: 4px 18px 24px; }
+.home-menu-hero { display: flex; align-items: center; gap: 14px; padding: 8px 4px 20px; }
+.home-menu-hero > .app-icon { width: 56px; height: 56px; }
+.home-menu-hero > div { min-width: 0; }
+.home-menu-hero strong { display: block; font-size: 1rem; overflow-wrap: anywhere; }
+.home-menu-hero small { display: block; font-size: .8125rem; margin-top: 5px; overflow-wrap: anywhere; }
+.home-action-list { display: flex; flex-direction: column; border: 1px solid var(--separator); background: rgba(var(--surface),.6); border-radius: 17px; overflow: hidden; margin-bottom: 12px; }
+.home-action { display: flex; align-items: center; gap: 12px; min-height: 48px; text-align: left; padding: 12px 15px; font-size: .9375rem; line-height: 1.5; }
+.home-action + .home-action { border-top: 1px solid var(--separator); }
+.home-action svg { width: 20px; height: 20px; color: var(--accent); }
+.home-action:focus-visible { outline-offset: -4px; }
+.home-action:hover { background: var(--field-bg); }
+@media (max-width:699px) {
+  #sheet.home-menu-mode.pane-host .pane { max-width: none; }
+  .dock-surface { padding: 10px; }
+  #dock { gap: 10px; }
+}
+@media (prefers-reduced-motion:reduce) { .editing #dock .glass-app-icon { animation: none; } }
+@media (prefers-reduced-transparency:reduce), (prefers-contrast:more) {
+  .empty-dock, .home-action-list { background: rgb(var(--surface)) !important; }
 }

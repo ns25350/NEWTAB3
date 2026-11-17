@@ -35,4 +35,16 @@ test('Compact edits round-trip through saved columns without shifting the drop o
   noOverlap({grid:{columns:cols},pages:[{items:stored}]});
  }
 });
+test('Existing home layouts never auto-populate the Dock',()=>{
+ const d=C.defaults();assert.deepEqual(d.dock,[]);delete d.dock;const loaded=C.normalize(d);assert.deepEqual(loaded.dock,[]);assert.deepEqual(loaded.pages,d.pages);
+});
+test('Explicit Dock choices preserve order, reject unknown identities, and survive folder membership',()=>{
+ const d=C.defaults();d.dock=['gmail','google','gmail','missing'];d.folders=[{id:'study',name:'Study',children:['gmail']}];const loaded=C.normalize(d);assert.deepEqual(loaded.dock,['gmail','google']);assert.deepEqual(C.normalize(JSON.parse(JSON.stringify(loaded))).dock,loaded.dock);assert(!loaded.pages.flatMap(p=>p.items).some(i=>i.id==='s:gmail'));
+});
+test('Dock pruning and capacity preserve only explicitly selected sites',()=>{
+ const shortcuts=Array.from({length:12},(_,i)=>({id:'site'+i}));assert.deepEqual(C.cleanDock(shortcuts.map(s=>s.id),shortcuts),shortcuts.slice(0,8).map(s=>s.id));assert.deepEqual(C.cleanDock(['site1','site2','site1'],shortcuts.filter(s=>s.id!=='site1')),['site2']);assert.deepEqual(C.cleanDock(null,shortcuts),[]);
+});
+test('SVG symbol choices migrate safely and cannot introduce custom markup',()=>{
+ const d=C.defaults();d.shortcuts[0].symbol='star';d.shortcuts[1].symbol='<svg onload=alert(1)>';const loaded=C.normalize(d);assert.equal(loaded.shortcuts[0].symbol,'star');assert.equal(loaded.shortcuts[1].symbol,'auto');assert.equal(C.normalize({version:4}).shortcuts[0].symbol,'auto');
+});
 console.log(`${checks} checks passed.`);

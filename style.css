@@ -172,7 +172,6 @@ small, .subtle { font-size: .8125rem; color: var(--muted); }
 @media (max-width:370px) {
   .page { padding-inline: 16px; }
   #dock { gap: 5px; padding: 10px; }
-  #undo { padding: 0 9px; font-size: .75rem; }
 }
 @media (prefers-reduced-motion:reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }

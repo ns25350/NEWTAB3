@@ -11,7 +11,9 @@ function geometry(dialog){
  const compact=innerWidth<700;
  const offset=Math.max(0,innerHeight-height-(viewport?.offsetTop||0))+(compact?0:24);
  const limit=Math.max(180,height-(compact?28:64));
- const top=Math.min(limit,dialog.classList.contains('confirmation-mode')?380:dialog.classList.contains('settings-mode')?800:680);
+ let preferred=dialog.classList.contains('confirmation-mode')?380:(dialog.classList.contains('settings-mode')||dialog.classList.contains('shortcut-editor-mode'))?800:680;
+ if(dialog.classList.contains('home-menu-mode')){const body=dialog.querySelector('#sheet-body'),style=getComputedStyle(body);preferred=[...body.children].reduce((sum,n)=>sum+n.getBoundingClientRect().height+parseFloat(getComputedStyle(n).marginBottom||0),0)+dialog.querySelector('.sheet-head').getBoundingClientRect().height+grabber.getBoundingClientRect().height+parseFloat(style.paddingTop)+parseFloat(style.paddingBottom)+4}
+ const top=Math.min(limit,Math.max(240,preferred));
  return {offset,breaks:{top:{enabled:true,height:top},middle:{enabled:!dialog.classList.contains('confirmation-mode'),height:Math.max(100,Math.min(top*.68,520))},bottom:{enabled:true,height:0}}};
 }
 function visibleHeight(record,y){
@@ -75,12 +77,13 @@ function refresh(){
 }
 function present(dialog){
  if(dialog.open){refresh();return;}
+ cleanup(dialog);
  dialog.classList.add('pane-host');dialog.showModal();queueMicrotask(()=>mount(dialog));
 }
 function close(dialog){if(dialog.open)dialog.close();cleanup(dialog);}
 grabber.addEventListener('pointerdown',event=>{if(event.button===0)grabber.setPointerCapture(event.pointerId);});
 const dialog=document.querySelector('#sheet');
-dialog.addEventListener('close',()=>cleanup(dialog));
+dialog.addEventListener('close',()=>{if(!dialog.open)cleanup(dialog)});
 dialog.addEventListener('click',event=>{if(event.target===dialog||event.target.classList.contains('cupertino-pane-wrapper'))close(dialog);});
 grabber.addEventListener('keydown',event=>{
  if(!active||!['ArrowUp','ArrowDown','Home','End','Enter',' '].includes(event.key))return;
